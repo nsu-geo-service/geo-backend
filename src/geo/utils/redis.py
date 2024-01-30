@@ -184,10 +184,10 @@ class RedisClient:
             )
             raise ex
 
-    async def hset(self, name: Any, key: Any, value: Any, mapping: Mapping = None, items: Any = None):
-        logging.debug(f"Сформирована Redis HSET команда, name: {name}, key: {key}, value: {value}")
+    async def hset(self, hash_key: Any, mapping: dict, items: Any = None):
+        logging.debug(f"Сформирована Redis HSET команда, name: {hash_key}, mapping: {mapping}, items: {items}")
         try:
-            await self.redis_client.hset(name, key, value, mapping, items)
+            await self.redis_client.hset(name=hash_key, mapping=mapping, items=items)
         except RedisError as ex:
             logging.exception(
                 "Команда Redis HSET завершена с исключением",
@@ -210,10 +210,10 @@ class RedisClient:
             )
             raise ex
 
-    async def hgetall(self, name: Any):
-        logging.debug(f"Сформирована Redis HGETALL команда, name: {name}")
+    async def hgetall(self, hash_key: Any):
+        logging.debug(f"Сформирована Redis HGETALL команда, hash_key: {hash_key}")
         try:
-            return await self.redis_client.hgetall(name)
+            return await self.redis_client.hgetall(hash_key)
         except RedisError as ex:
             logging.exception(
                 "Команда Redis HGETALL завершена с исключением",
@@ -250,6 +250,52 @@ class RedisClient:
         except RedisError as ex:
             logging.exception(
                 "Команда Redis HGET завершена с исключением",
+                exc_info=(type(ex), ex, ex.__traceback__),
+            )
+            raise ex
+
+    async def zadd(self, name: Any, mapping: Mapping):
+        logging.debug(f"Сформирована Redis ZADD команда, name: {name}, mapping: {mapping}")
+        try:
+            return await self.redis_client.zadd(name, mapping)
+        except RedisError as ex:
+            logging.exception(
+                "Команда Redis ZADD завершена с исключением",
+                exc_info=(type(ex), ex, ex.__traceback__),
+            )
+            raise ex
+
+    async def zrange(self, name: Any, start: int, end: int, with_scores: bool = False, offset: int = None):
+        logging.debug(
+            f"Сформирована Redis ZRANGE команда, name: {name}, start: {start}, end: {end}, with_scores: {with_scores}"
+        )
+        try:
+            return await self.redis_client.zrange(name, start, end, offset=offset, withscores=with_scores)
+        except RedisError as ex:
+            logging.exception(
+                "Команда Redis ZRANGE завершена с исключением",
+                exc_info=(type(ex), ex, ex.__traceback__),
+            )
+            raise ex
+
+    async def zrem(self, name: Any, *values: Any):
+        logging.debug(f"Сформирована Redis ZREM команда, name: {name}, values: {values}")
+        try:
+            return await self.redis_client.zrem(name, *values)
+        except RedisError as ex:
+            logging.exception(
+                "Команда Redis ZREM завершена с исключением",
+                exc_info=(type(ex), ex, ex.__traceback__),
+            )
+            raise ex
+
+    async def zcard(self, name: Any):
+        logging.debug(f"Сформирована Redis ZCARD команда, name: {name}")
+        try:
+            return await self.redis_client.zcard(name)
+        except RedisError as ex:
+            logging.exception(
+                "Команда Redis ZCARD завершена с исключением",
                 exc_info=(type(ex), ex, ex.__traceback__),
             )
             raise ex
