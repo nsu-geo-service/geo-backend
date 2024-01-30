@@ -28,6 +28,7 @@ class Task(BaseModel):
     step: TaskStep
 
     created_at: datetime
+    completed_in: datetime | None
 
     class Config:
         from_attributes = True
