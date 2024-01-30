@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter, Depends
 from fastapi import status as http_status
 
@@ -31,12 +30,12 @@ async def task(task_id: TaskID, services: ServiceFactory = Depends(get_services)
 
 
 @task_router.post("", response_model=TaskResponse, status_code=http_status.HTTP_200_OK)
-async def new_task(data: schemas.TaskCreate, services: ServiceFactory = Depends(get_services)):
+async def new_task(services: ServiceFactory = Depends(get_services)):
     """
     Создать новую задачу
 
     """
-    return TaskResponse(content=await services.task.new_task(data))
+    return TaskResponse(content=await services.task.new_task())
 
 
 @task_router.delete("/{task_id}", response_model=None, status_code=http_status.HTTP_204_NO_CONTENT)

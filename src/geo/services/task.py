@@ -1,4 +1,4 @@
-from geo.models.schemas import TaskID, TaskCreate, Task
+from geo.models.schemas import TaskID, Task
 from geo.utils.redis import RedisClient
 
 
@@ -16,7 +16,7 @@ class TaskApplicationService:
     async def get_task(self, task_id: TaskID) -> Task:
         pass
 
-    async def new_task(self, data: TaskCreate) -> Task:
+    async def new_task(self) -> Task:
         pass
 
     async def delete_task(self, task_id: TaskID) -> None:
