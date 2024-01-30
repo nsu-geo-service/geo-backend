@@ -6,8 +6,9 @@ from fastapi.exceptions import RequestValidationError
 
 from geo.config import load_env_config
 from geo.controllers import (
-    task_router, stats_router,
+    task_router, stats_router, geo_router,
 )
+from geo.controllers.proc import proc_router
 from geo.exceptions import (
     APIError,
     handle_api_error,
@@ -47,6 +48,8 @@ class ApplicationFactory:
         logging.debug("Регистрация маршрутов API")
         api_router = APIRouter(prefix="/api/v1")
         api_router.include_router(task_router)
+        api_router.include_router(proc_router)
+        api_router.include_router(geo_router)
         api_router.include_router(stats_router)
         app.include_router(api_router)
 
