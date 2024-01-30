@@ -25,6 +25,7 @@ TaskID = NewType('TaskID', UUID)
 class Task(BaseModel):
     id: TaskID
     state: TaskState
+    step: TaskStep
 
     created_at: datetime
 
