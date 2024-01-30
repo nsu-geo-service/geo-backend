@@ -6,7 +6,7 @@ from fastapi.exceptions import RequestValidationError
 
 from geo.config import load_env_config
 from geo.controllers import (
-    task_router,
+    task_router, stats_router,
 )
 from geo.exceptions import (
     APIError,
@@ -26,7 +26,7 @@ class ApplicationFactory:
         config = load_env_config(".env")
         logging.basicConfig(level=logging.DEBUG if config.DEBUG else logging.INFO)
         app = FastAPI(
-            title="AudioLibrary",
+            title="GeoService",
             debug=config.DEBUG,
             swagger_ui_parameters={"syntaxHighlight.theme": "obsidian"},
             docs_url="/api/v1/docs",
@@ -46,6 +46,7 @@ class ApplicationFactory:
         logging.debug("Регистрация маршрутов API")
         api_router = APIRouter(prefix="/api/v1")
         api_router.include_router(task_router)
+        api_router.include_router(stats_router)
         app.include_router(api_router)
 
         logging.debug("Регистрация обработчиков исключений")
