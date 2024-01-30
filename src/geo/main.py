@@ -33,6 +33,7 @@ class ApplicationFactory:
             redoc_url="/api/v1/redoc",
         )
         app.openapi = lambda: custom_openapi(app)
+        getattr(app, "state").config = config
         getattr(app, "state").http_client = AiohttpClient(
             timeout=timedelta(seconds=2),
             limit_per_host=100,
