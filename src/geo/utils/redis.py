@@ -36,7 +36,7 @@ class RedisClient:
             )
             return False
 
-    async def set(self, key: Any, value: Any, expire: int = 2592000):
+    async def set(self, key: Any, value: Any, expire: int = None):
         """Выполнить команду Redis SET.
          Установите ключ для хранения строкового значения. Если ключ уже содержит значение, оно
          перезаписывается независимо от его типа.
@@ -55,7 +55,8 @@ class RedisClient:
         logging.debug(f"Сформирована Redis SET команда, key: {key}, value: {value}")
         try:
             await self.redis_client.set(key, value)
-            await self.redis_client.expire(key, expire)
+            if expire:
+                await self.redis_client.expire(key, expire)
         except RedisError as ex:
             logging.exception(
                 "Команда Redis SET завершена с исключением",
