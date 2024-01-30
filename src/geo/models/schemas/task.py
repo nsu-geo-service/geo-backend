@@ -15,8 +15,8 @@ class TaskState(Enum):
 
 
 class TaskStep(Enum):
-    STEP1 = 'STEP1'
-    STEP2 = 'STEP2'
+    DATA = 'DATA'
+    TOMOGRAPHY = 'TOMOGRAPHY'
 
 
 TaskID = NewType('TaskID', UUID)
@@ -25,10 +25,7 @@ TaskID = NewType('TaskID', UUID)
 class Task(BaseModel):
     id: TaskID
     state: TaskState
-    step: TaskStep
+    step: TaskStep | None
 
     created_at: datetime
     completed_in: datetime | None
-
-    class Config:
-        from_attributes = True
