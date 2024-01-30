@@ -5,19 +5,31 @@ from geo.models.schemas import TaskID
 from geo.services import ServiceFactory
 from geo.services.di import get_services
 
-from geo.models import schemas
-from geo.views.task import TasksResponse, TaskResponse
+from geo.views.task import TasksResponse, TaskResponse, TaskCountResponse
 
 task_router = APIRouter(prefix="/task", tags=["Task"])
 
 
 @task_router.get("", response_model=TasksResponse, status_code=http_status.HTTP_200_OK)
-async def task_list(services: ServiceFactory = Depends(get_services)):
+async def task_list(
+        page: int = 1,
+        per_page: int = 10,
+        services: ServiceFactory = Depends(get_services)
+):
     """
-    Получить задачи
+    Получить список задач
 
     """
-    return TasksResponse(content=await services.task.list())
+    return TasksResponse(content=await services.task.list(page, per_page))
+
+
+@task_router.get("/count", response_model=TaskCountResponse, status_code=http_status.HTTP_200_OK)
+async def task_count(services: ServiceFactory = Depends(get_services)):
+    """
+    Получить количество задач
+
+    """
+    return TaskCountResponse(content=await services.task.count())
 
 
 @task_router.get("/{task_id}", response_model=TaskResponse, status_code=http_status.HTTP_200_OK)
@@ -45,4 +57,3 @@ async def delete_task(task_id: TaskID, services: ServiceFactory = Depends(get_se
 
     """
     await services.task.delete_task(task_id)
-
