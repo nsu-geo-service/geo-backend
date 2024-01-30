@@ -7,7 +7,11 @@ from pydantic import BaseModel, field_validator
 
 
 class TaskState(Enum):
-    ...
+    PLAIN = 'plain'
+    IN_PROGRESS = 'in_progress'
+    PENDING = 'pending'
+    DONE = 'done'
+    FAILED = 'failed'
 
 
 TaskID = NewType('TaskID', UUID)
@@ -21,20 +25,3 @@ class Task(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-class TaskCreate(BaseModel):
-    username: str
-    password: str
-
-    @field_validator('username')
-    def username_must_be_valid(cls, value):
-        if not is_valid_username(value):
-            raise ValueError("Имя пользователя должно быть валидным")
-        return value
-
-    @field_validator('password')
-    def password_must_be_valid(cls, value):
-        if not is_valid_password(value):
-            raise ValueError("Пароль должен быть валидным")
-        return value
