@@ -12,8 +12,10 @@ class TaskApplicationService:
     def __init__(
             self,
             redis_client: RedisClient,
+            redis_query_base: RedisClient,
     ):
         self._redis_client = redis_client
+        self._redis_query_base = redis_query_base
 
     async def list(self, page: int, per_page: int) -> list[Task]:
         per_page_limit = 40
@@ -93,6 +95,8 @@ class TaskApplicationService:
 
         await self._redis_client.zrem('tasks', str(task_id))
         await self._redis_client.delete(str(task_id))
+        await self._redis_query_base.delete(f'{str(task_id)}:data')
+        await self._redis_query_base.delete(f'{str(task_id)}:tomography')
 
     async def count(self) -> int:
         return await self._redis_client.zcard('tasks')
