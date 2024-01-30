@@ -6,3 +6,5 @@ from .task import TaskID
 from .task import Task
 from .task import TaskState
 from .task import TaskStep
+
+from .data import DataProc
