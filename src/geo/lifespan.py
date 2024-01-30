@@ -5,6 +5,7 @@ from fastapi import FastAPI
 
 from geo.config import Config, RedisConfig
 from geo.utils.redis import RedisClient
+from geo.utils.redis_queue import RedisQueue
 
 
 async def init_redis_pool(app: FastAPI, config: RedisConfig):
@@ -13,7 +14,14 @@ async def init_redis_pool(app: FastAPI, config: RedisConfig):
         encoding="utf-8",
         decode_responses=True,
     )
-    getattr(app, "state").redis_queue = RedisClient(pool_0)
+    pool_1 = await Redis.from_url(
+        f"redis://{config.HOST}:{config.PORT}/1",
+        encoding="utf-8",
+        decode_responses=True,
+    )
+    getattr(app, "state").redis_client = RedisClient(pool_0)
+    getattr(app, "state").data_queue = RedisQueue(pool_1, namespace="data_queue")
+    getattr(app, "state").tomography_queue = RedisQueue(pool_1, namespace="tomography_queue")
 
 
 class LifeSpan:
@@ -29,4 +37,6 @@ class LifeSpan:
 
     async def shutdown_handler(self) -> None:
         logging.debug("Выполнение FastAPI shutdown event handler.")
-        await getattr(self._app, "state").redis_queue.close()
+        await getattr(self._app, "state").redis_client.close()
+        await getattr(self._app, "state").data_queue.close()
+        await getattr(self._app, "state").tomography_queue.close()
