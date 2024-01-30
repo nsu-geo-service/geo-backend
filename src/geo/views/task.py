@@ -8,3 +8,7 @@ class TaskResponse(BaseView):
 
 class TasksResponse(BaseView):
     content: list[schemas.Task]
+
+
+class TaskCountResponse(BaseView):
+    content: int
