@@ -16,8 +16,9 @@ from geo.exceptions import (
     handle_pydantic_error
 )
 from geo.lifespan import LifeSpan
+from geo.services.storage import FileStorage
 from geo.utils import custom_openapi
-from geo.utils.http import AiohttpClient
+from geo.utils.http import HttpProcessor
 
 
 class ApplicationFactory:
@@ -35,12 +36,14 @@ class ApplicationFactory:
         )
         app.openapi = lambda: custom_openapi(app)
         getattr(app, "state").config = config
-        getattr(app, "state").http_client = AiohttpClient(
-            timeout=timedelta(seconds=2),
-            limit_per_host=100,
-            agent=f"aiohttp/3.9.3 (compatible; Geo/0.1.0)",
+        getattr(app, "state").storage = FileStorage("./storage")
+        getattr(app, "state").http_client = HttpProcessor(
+            timeout=timedelta(minutes=10).seconds,
+            user_agent="aiohttp/3.7.4 (compatible; Geo/0.1.0)",
         )
-
+        if not config.DEBUG:
+            logging.getLogger("apscheduler").setLevel(logging.INFO)
+            logging.getLogger("aiohttp").setLevel(logging.WARNING)
         lifespan = LifeSpan(app, config)
         app.add_event_handler("startup", lifespan.startup_handler)
         app.add_event_handler("shutdown", lifespan.shutdown_handler)
