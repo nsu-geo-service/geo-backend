@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 logger = getLogger(__name__)
 
 DEBUG_ENV = "DEBUG"
+FDSN_BASE_ENV = "FDSN_BASE"
 REDIS_HOST_ENV = "REDIS_HOST"
 REDIS_PORT_ENV = "REDIS_PORT"
 
@@ -23,6 +24,7 @@ class RedisConfig:
 @dataclass
 class Config:
     DEBUG: bool
+    FDSN_BASE: str
     REDIS: RedisConfig
 
 
@@ -59,6 +61,7 @@ def load_env_config(env_file: str | os.PathLike = None) -> Config:
 
     return Config(
         DEBUG=to_bool(get_str_env(DEBUG_ENV)),
+        FDSN_BASE=get_str_env(FDSN_BASE_ENV),
         REDIS=RedisConfig(
             HOST=get_str_env(REDIS_HOST_ENV),
             PORT=get_int_env(REDIS_PORT_ENV)
