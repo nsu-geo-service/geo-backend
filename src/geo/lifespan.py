@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from redis.asyncio import Redis
 from fastapi import FastAPI
 
@@ -34,21 +35,32 @@ async def init_redis_pool(app: FastAPI, config: RedisConfig):
     getattr(app, "state").tomography_queue = RedisQueue(pool_2, namespace="tomography_queue")
 
 
-def start_workers(app: FastAPI):
-    asyncio.create_task(
-        data_proc.worker(
-            redis_client=getattr(app, "state").redis_client,
-            redis_data_base=getattr(app, "state").redis_query_base,
-            queue=getattr(app, "state").data_queue,
-        )
+def start_workers(app: FastAPI, fdsn_base: str):
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(
+        func=data_proc.worker,
+        trigger="interval",
+        seconds=5,
+        args=(
+            getattr(app, "state").redis_client,
+            getattr(app, "state").redis_query_base,
+            getattr(app, "state").data_queue,
+            getattr(app, "state").http_client,
+            fdsn_base,
+            getattr(app, "state").storage,
+        ),
     )
-    asyncio.create_task(
-        tomography_proc.worker(
-            redis_client=getattr(app, "state").redis_client,
-            redis_data_base=getattr(app, "state").redis_query_base,
-            queue=getattr(app, "state").tomography_queue,
-        )
+    scheduler.add_job(
+        func=tomography_proc.worker,
+        trigger="interval",
+        seconds=5,
+        args=(
+            getattr(app, "state").redis_client,
+            getattr(app, "state").redis_query_base,
+            getattr(app, "state").tomography_queue,
+        ),
     )
+    scheduler.start()
 
 
 class LifeSpan:
@@ -60,7 +72,7 @@ class LifeSpan:
     async def startup_handler(self) -> None:
         logging.debug("Выполнение FastAPI startup event handler.")
         await init_redis_pool(self._app, self._config.REDIS)
-        start_workers(self._app)
+        start_workers(self._app, self._config.FDSN_BASE)
         logging.info("FastAPI Успешно запущен.")
 
     async def shutdown_handler(self) -> None:
