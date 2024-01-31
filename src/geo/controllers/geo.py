@@ -44,3 +44,28 @@ async def event_table(
 
     """
     ...
+
+
+@geo_router.get("/{task_id}/data/station", response_model=EventRowResponse, status_code=http_status.HTTP_200_OK)
+async def station_table(
+        task_id: TaskID,
+        services: ServiceFactory = Depends(get_services)
+):
+    """
+    Таблица событий
+
+    """
+    ...
+
+
+
+@geo_router.get("/{task_id}/tomography/3d", response_model=EventRowResponse, status_code=http_status.HTTP_200_OK)
+async def tomography_3d(
+        task_id: TaskID,
+        services: ServiceFactory = Depends(get_services)
+):
+    """
+    3D модель томографии
+
+    """
+    ...
