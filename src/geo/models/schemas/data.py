@@ -6,9 +6,11 @@ from pydantic import BaseModel
 class DataProc(BaseModel):
     start_time: datetime
     end_time: datetime
-    all_origins: bool
-    arrivals: bool
     network: str
+    min_latitude: int | float | None = None
+    max_latitude: int | float | None = None
+    min_longitude: int | float | None = None
+    max_longitude: int | float | None = None
 
 
 class EventRow(BaseModel):
@@ -17,4 +19,12 @@ class EventRow(BaseModel):
     x: float | int
     y: float | int
     z: float | int
-    event: str
+    event: int
+
+
+class StationRow(BaseModel):
+    network: str
+    station: str
+    x: float | int
+    y: float | int
+    z: float | int
