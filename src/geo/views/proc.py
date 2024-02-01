@@ -3,8 +3,8 @@ from geo.models import schemas
 
 
 class DataProcResponse(BaseView):
-    content: schemas.DataProc
+    content: schemas.SeisData
 
 
 class TomographyProcResponse(BaseView):
-    content: schemas.TomographyProc
+    content: schemas.Tomography

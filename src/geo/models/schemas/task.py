@@ -15,7 +15,7 @@ class TaskState(Enum):
 
 
 class TaskStep(Enum):
-    DATA = 'DATA'
+    SEISDATA = 'SEISDATA'
     TOMOGRAPHY = 'TOMOGRAPHY'
 
 
@@ -29,3 +29,6 @@ class Task(BaseModel):
 
     created_at: datetime
     completed_in: datetime | None
+
+    class Config:
+        from_attributes = True

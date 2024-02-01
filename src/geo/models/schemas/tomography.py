@@ -1,7 +1,7 @@
 from pydantic import BaseModel, validator, field_validator
 
 
-class TomographyProc(BaseModel):
+class Tomography(BaseModel):
     iter_max: int
     lin_sys_LSQR_iter_max: int
     tomo_mat_damping_P: float
@@ -38,3 +38,6 @@ class TomographyProc(BaseModel):
         if len(value) != 3:
             raise ValueError('grid_size должен быть длиной 3')
         return value
+
+    class Config:
+        from_attributes = True
