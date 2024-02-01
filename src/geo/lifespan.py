@@ -1,38 +1,27 @@
-import asyncio
 import logging
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from redis.asyncio import Redis
 from fastapi import FastAPI
 
-from geo.config import Config, RedisConfig
-from geo.utils.redis import RedisClient
-from geo.utils.redis_queue import RedisQueue
+from geo.config import Config
+from geo.db import create_sqlite_async_session
+from geo.models import tables
+from geo.utils.queue import Queue
 
 from geo.services import data_proc
 from geo.services import tomography_proc
 
 
-async def init_redis_pool(app: FastAPI, config: RedisConfig):
-    pool_0 = await Redis.from_url(
-        f"redis://{config.HOST}:{config.PORT}/0",
-        encoding="utf-8",
-        decode_responses=True,
+async def init_db(app: FastAPI, *, echo: bool = False) -> None:
+    engine, session = create_sqlite_async_session(
+        database="database",
+        echo=echo
     )
-    pool_1 = await Redis.from_url(
-        f"redis://{config.HOST}:{config.PORT}/1",
-        encoding="utf-8",
-        decode_responses=True,
-    )
-    pool_2 = await Redis.from_url(
-        f"redis://{config.HOST}:{config.PORT}/2",
-        encoding="utf-8",
-        decode_responses=True,
-    )
-    getattr(app, "state").redis_client = RedisClient(pool_0)
-    getattr(app, "state").redis_query_base = RedisClient(pool_1)
-    getattr(app, "state").data_queue = RedisQueue(pool_2, namespace="data_queue")
-    getattr(app, "state").tomography_queue = RedisQueue(pool_2, namespace="tomography_queue")
+    getattr(app, "state").db_session = session
+
+    async with engine.begin() as conn:
+        # await conn.run_sync(tables.Base.metadata.drop_all)
+        await conn.run_sync(tables.Base.metadata.create_all)
 
 
 def start_workers(app: FastAPI, fdsn_base: str):
@@ -42,9 +31,8 @@ def start_workers(app: FastAPI, fdsn_base: str):
         trigger="interval",
         seconds=5,
         args=(
-            getattr(app, "state").redis_client,
-            getattr(app, "state").redis_query_base,
             getattr(app, "state").data_queue,
+            getattr(app, "state").db_session,
             getattr(app, "state").http_client,
             fdsn_base,
             getattr(app, "state").storage,
@@ -55,11 +43,14 @@ def start_workers(app: FastAPI, fdsn_base: str):
         trigger="interval",
         seconds=5,
         args=(
-            getattr(app, "state").redis_client,
-            getattr(app, "state").redis_query_base,
             getattr(app, "state").tomography_queue,
+            getattr(app, "state").db_session,
         ),
     )
+
+    logging.getLogger('apscheduler.executors.default').propagate = False
+    logging.getLogger('apscheduler.scheduler').propagate = False
+    logging.getLogger('apscheduler.scheduler').setLevel(logging.WARNING)
     scheduler.start()
 
 
@@ -71,12 +62,11 @@ class LifeSpan:
 
     async def startup_handler(self) -> None:
         logging.debug("Выполнение FastAPI startup event handler.")
-        await init_redis_pool(self._app, self._config.REDIS)
+        getattr(self._app, "state").data_queue = Queue()
+        getattr(self._app, "state").tomography_queue = Queue()
+        await init_db(self._app, echo=self._config.DEBUG)
         start_workers(self._app, self._config.FDSN_BASE)
         logging.info("FastAPI Успешно запущен.")
 
     async def shutdown_handler(self) -> None:
         logging.debug("Выполнение FastAPI shutdown event handler.")
-        await getattr(self._app, "state").redis_client.close()
-        await getattr(self._app, "state").data_queue.close()
-        await getattr(self._app, "state").tomography_queue.close()
