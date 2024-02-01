@@ -1,27 +1,28 @@
 import asyncio
 import logging
 import os
-import pickle
 from tempfile import NamedTemporaryFile
 from urllib.parse import urljoin
-from uuid import UUID
 
 import aiofiles
 import numpy as np
 import pandas as pd
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from geo.models.schemas import DataProc, TaskState
+from geo.models.schemas import TaskState, TaskStep
+from geo.repositories import TaskRepo
+from geo.repositories.detection import DetectionRepo
+from geo.repositories.event import EventRepo
+from geo.repositories.seisdata import SeisDataRepo
+from geo.repositories.station import StationRepo
 from geo.services.data_proc.utils import (
     quake,
-    generate_table,
     stations,
     relief_reader,
-    change_coords_to_ST3D
 )
 from geo.services.storage import FileStorage
 from geo.utils.http import HttpProcessor
-from geo.utils.redis import RedisClient
-from geo.utils.redis_queue import RedisQueue
+from geo.utils.queue import Queue
 
 
 async def fetch_from_base(http_client: HttpProcessor, url: str, params: dict = None):
@@ -33,126 +34,135 @@ async def fetch_from_base(http_client: HttpProcessor, url: str, params: dict = N
 
 
 async def worker(
-        redis_client: RedisClient,
-        redis_data_base: RedisClient,
-        queue: RedisQueue,
+        queue: Queue,
+        lazy_session: async_sessionmaker[AsyncSession],
         http_client: HttpProcessor,
         fdsn_base: str,
         storage: FileStorage,
 
 ):
-    while True:
-        await asyncio.sleep(3)
-        task_id_str = await queue.dequeue()
-        if not task_id_str:
-            continue
+    task_id = queue.dequeue()
+    if not task_id:
+        return
 
-        logging.info(f"[DataProc] Получена задача с id {task_id_str!r}")
-        task_id = UUID(task_id_str)
-        if not await redis_client.exists(str(task_id)):
-            logging.warning(f"[DataProc] Задача с id {task_id!r} не существует, но существовала в очереди")
-            continue
+    logging.info(f"[SeisDataProc] Получена задача с id {task_id!r}")
+    async with lazy_session() as session:
+        task_repo = TaskRepo(session)
+        seisdata_repo = SeisDataRepo(session)
 
-        raw_obj = await redis_data_base.get(f"{task_id_str}:data")
-        if not raw_obj:
-            logging.error(f"[DataProc] Данные задачи с id {task_id!r} не существуют, но существовали ранее")
-            await redis_client.hset(str(task_id), {"state": TaskState.FAILED.value})
-            continue
+        task = await task_repo.get(id=task_id)
+        if not task:
+            logging.error(f"[SeisDataProc] Задача с id {task_id!r} не существует")
+            return
 
-        data = DataProc.model_validate(pickle.loads(bytes.fromhex(raw_obj)))
+        data = await seisdata_repo.get(task_id=task_id)
+        if not data:
+            logging.error(f"[SeisDataProc] Данные задачи с task_id {task_id!r} не существуют")
+            return
 
-        quake_params = {
-            "includeallorigins": "true",
-            "includearrivals": "true",
-            "includeallmagnitudes": "true",
-            "starttime": data.start_time.isoformat(),
-            "endtime": data.end_time.isoformat(),
-            "nodata": 404,
-        }
-        if data.min_latitude:
-            quake_params["minlatitude"] = data.min_latitude
-        if data.max_latitude:
-            quake_params["maxlatitude"] = data.max_latitude
-        if data.min_longitude:
-            quake_params["minlongitude"] = data.min_longitude
-        if data.max_longitude:
-            quake_params["maxlongitude"] = data.max_longitude
+    quake_params = {
+        "includeallorigins": "true",
+        "includearrivals": "true",
+        "includeallmagnitudes": "true",
+        "starttime": data.start_time.isoformat(),
+        "endtime": data.end_time.isoformat(),
+        "nodata": 404,
+    }
+    if data.min_latitude:
+        quake_params["minlatitude"] = data.min_latitude
+    if data.max_latitude:
+        quake_params["maxlatitude"] = data.max_latitude
+    if data.min_longitude:
+        quake_params["minlongitude"] = data.min_longitude
+    if data.max_longitude:
+        quake_params["maxlongitude"] = data.max_longitude
 
-        quake_resp, station_resp = await asyncio.gather(
-            fetch_from_base(
-                http_client,
-                url=urljoin(fdsn_base, "/fdsnws/event/1/query"),
-                params=quake_params
-            ),
-            fetch_from_base(
-                http_client,
-                url=urljoin(fdsn_base, "/fdsnws/station/1/query"),
-                params={
-                    "network": data.network,
-                    "nodata": 404,
-                }
-            )
+    quake_resp, station_resp = await asyncio.gather(
+        fetch_from_base(
+            http_client,
+            url=urljoin(fdsn_base, "/fdsnws/event/1/query"),
+            params=quake_params
+        ),
+        fetch_from_base(
+            http_client,
+            url=urljoin(fdsn_base, "/fdsnws/station/1/query"),
+            params={
+                "network": data.network,
+                "nodata": 404,
+            }
         )
+    )
 
-        station_xml = station_resp.text
-        quake_xml = quake_resp.text
+    station_xml = station_resp.text
+    quake_xml = quake_resp.text
 
-        if not station_resp.is_success:
-            logging.error(f"[DataProc] Ошибка при получении данных станций {station_resp.status_code}")
-            await redis_client.hset(str(task_id), {"state": TaskState.FAILED.value})
-            continue
+    if not station_resp.is_success or not quake_resp.is_success:
+        logging.error(f"[SeisDataProc] Ошибка при получении данных станций {station_resp.status_code}")
+        async with lazy_session() as session:
+            task_repo = TaskRepo(session)
+            await task_repo.update(id=task_id, state=TaskState.FAILED)
+        return
 
-        if not quake_resp.is_success:
-            logging.error(f"[DataProc] Ошибка при получении данных событий {station_resp.status_code}")
-            await redis_client.hset(str(task_id), {"state": TaskState.FAILED.value})
-            continue
+    quake_file = NamedTemporaryFile(delete_on_close=False)
+    station_file = NamedTemporaryFile(delete_on_close=False)
 
-        quake_file = NamedTemporaryFile(delete_on_close=False)
-        station_file = NamedTemporaryFile(delete_on_close=False)
+    async with aiofiles.open(station_file.name, 'w') as file:
+        await file.write(station_xml)
 
-        async with aiofiles.open(station_file.name, 'w') as file:
-            await file.write(station_xml)
+    async with aiofiles.open(quake_file.name, 'w') as file:
+        await file.write(quake_xml)
 
-        async with aiofiles.open(quake_file.name, 'w') as file:
-            await file.write(quake_xml)
+    logging.info(f"[SeisDataProc] Обработка данных")
+    # CPU
+    events, detections = quake(quake_file.name)
+    station_table = stations(station_file.name)
 
-        logging.info(f"[DataProc] Обработка данных")
-        # CPU
-        p_table, s_table = generate_table(pd.DataFrame(quake(quake_file.name)))
-        station_list = stations(station_file.name)
+    async with lazy_session() as session:
+        task_repo = TaskRepo(session)
+        station_repo = StationRepo(session)
+        event_repo = EventRepo(session)
+        detection_repo = DetectionRepo(session)
 
-        # Список станций station_info
+        for station_id, station in enumerate(station_table["station"]):
+            await station_repo.create(
+                network=station_table["network"][station_id],
+                station=station,
+                x=station_table["x"][station_id],
+                y=station_table["y"][station_id],
+                z=station_table["z"][station_id],
+                task_id=task_id,
+                commit=False
+            )
+        await session.commit()
 
-        p_obs_time = np.asarray(p_table['Time'], dtype=np.float64)
-        s_obs_time = np.asarray(s_table['Time'], dtype=np.float64)
-        events_df = np.asarray(p_table['Event'], dtype=np.float64)
-        stations_df = np.asarray(p_table['Station'], dtype=np.float64)
+        event_name_id = {}
+        for event_name, payload in events.items():
+            event = await event_repo.create(
+                network=payload[0],
+                x=payload[1],
+                y=payload[2],
+                z=payload[3],
+                task_id=task_id,
+                commit=True
+            )
+            event_name_id[event_name] = event.id
 
-        relief_path = storage.abs_path("relief.dat")
-        # # CPU
-        # x_middle, y_middle, depth_topography, X_Y_Z_relief = relief_reader(relief_path, data.grid_size)
-        #
-        # LIM_COORD = X_Y_Z_relief[:3]
-        # MAX_COORD = X_Y_Z_relief[3:]
-        #
-        # x_srcs, y_srcs, z_srcs = change_coords_to_ST3D(
-        #     srcs[:, :1].flatten(),
-        #     srcs[:, 1:2].flatten(),
-        #     srcs[:, 2:3].flatten(),
-        #     y_middle,
-        #     x_middle
-        # )
-        # x_rcvrs, y_rcvrs, z_rcvrs = change_coords_to_ST3D(
-        #     rsvrs[:, :1].flatten(),
-        #     rsvrs[:, 1:2].flatten(),
-        #     rsvrs[:, 2:3].flatten(),
-        #     y_middle,
-        #     x_middle
-        # )
-        #
-        # X_Y_Z_srcs = np.column_stack((x_srcs, y_srcs, z_srcs))
-        # X_Y_Z_rcvrs = np.column_stack((x_rcvrs, y_rcvrs, z_rcvrs))
+        for event_name, payload in detections.items():
+            detection_list = payload[0]
+            station_name = payload[1]
+            station_id = (await station_repo.get(station=station_name, task_id=task_id)).id
 
-        os.remove(quake_file.name)
-        os.remove(station_file.name)
-        print()
+            for detection in detection_list:
+                await detection_repo.create(
+                    phase=detection[0],
+                    time=detection[1],
+                    station_id=station_id,
+                    event_id=event_name_id[event_name],
+                    commit=False
+                )
+        await task_repo.update(id=task_id, state=TaskState.PENDING, step=TaskStep.SEISDATA, commit=False)
+        await session.commit()
+
+    os.remove(quake_file.name)
+    os.remove(station_file.name)
+    print()
