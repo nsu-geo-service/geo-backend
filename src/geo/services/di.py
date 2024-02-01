@@ -8,9 +8,8 @@ async def get_services(request: Request) -> ServiceFactory:
     local_scope = request.scope
 
     yield ServiceFactory(
-        redis_client=global_scope.redis_client,
         data_queue=global_scope.data_queue,
         tomography_queue=global_scope.tomography_queue,
-        redis_query_base=global_scope.redis_query_base,
+        lazy_session=global_scope.db_session,
         config=global_scope.config,
     )

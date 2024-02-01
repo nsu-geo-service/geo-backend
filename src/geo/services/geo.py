@@ -1,66 +1,71 @@
-import pickle
+from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
 from geo.exceptions import NotFound, BadRequest
 from geo.models.schemas import TaskID, TaskState, TaskStep
-from geo.models.schemas.data import DataProc
-from geo.models.schemas.tomography import TomographyProc
-from geo.utils.redis import RedisClient
-from geo.utils.redis_queue import RedisQueue
+from geo.models.schemas.data import SeisData
+from geo.models.schemas.tomography import Tomography
+from geo.repositories import TaskRepo
+from geo.repositories.seisdata import SeisDataRepo
+from geo.repositories.tomography import TomographyRepo
+from geo.utils.queue import Queue
 
 
 class GeoApplicationService:
 
     def __init__(
             self,
-            redis_client: RedisClient,
-            data_queue: RedisQueue,
-            tomography_queue: RedisQueue,
-            redis_query_base: RedisClient,
+            data_queue: Queue,
+            tomography_queue: Queue,
+            lazy_session: async_sessionmaker[AsyncSession],
     ):
-        self._redis_client = redis_client
-        self._data_queue = data_queue
+        self._seisdata_queue = data_queue
         self._tomography_queue = tomography_queue
-        self._redis_query_base = redis_query_base
+        self._lazy_session = lazy_session
 
-    async def data(self, task_id: TaskID) -> DataProc:
-        raw_obj = await self._redis_query_base.get(f"{task_id}:data")
-        if not raw_obj:
-            raise NotFound(f"Данные задачи с id {task_id!r} не существуют")
-        obj = pickle.loads(bytes.fromhex(raw_obj))
-        return DataProc.model_validate(obj)
+    async def seisdata(self, task_id: TaskID) -> SeisData:
+        async with self._lazy_session() as session:
+            seisdata_repo = SeisDataRepo(session)
+            seisdata = await seisdata_repo.get(task_id=task_id)
+        if not seisdata:
+            raise NotFound(f"Данные задачи с task_id {task_id!r} не существуют")
+        return SeisData.model_validate(seisdata)
 
-    async def tomography(self, task_id: TaskID) -> TomographyProc:
-        raw_obj = await self._redis_query_base.get(f"{task_id}:tomography")
-        if not raw_obj:
-            raise NotFound(f"Данные задачи с id {task_id!r} не существуют")
-        obj = pickle.loads(bytes.fromhex(raw_obj))
-        return TomographyProc.model_validate(obj)
+    async def tomography(self, task_id: TaskID) -> Tomography:
+        async with self._lazy_session() as session:
+            tomography_repo = TomographyRepo(session)
+            tomography = await tomography_repo.get(task_id=task_id)
+        if not tomography:
+            raise NotFound(f"Данные задачи с task_id {task_id!r} не существуют")
+        return Tomography.model_validate(tomography)
 
-    async def data_proc(self, task_id: TaskID, data: DataProc):
-        task = await self._redis_client.hgetall(str(task_id))
-        if not task:
-            raise NotFound(f"Задача с id {task_id!r} не существует")
+    async def seisdata_proc(self, task_id: TaskID, data: SeisData):
+        async with self._lazy_session() as session:
+            task_repo = TaskRepo(session)
+            seisdata_repo = SeisDataRepo(session)
+            task = await task_repo.get(id=task_id)
 
-        if task['state'] != TaskState.PLAIN.value:
-            raise BadRequest(f"Задача с id {task_id!r} уже находится в обработке или завершена")
+            if not task:
+                raise NotFound(f"Задача с id {task_id!r} не существует")
 
-        raw_obj = pickle.dumps(data.model_dump()).hex()
-        await self._redis_client.hset(str(task_id), {'state': TaskState.IN_PROGRESS.value})
-        await self._redis_query_base.set(f"{task_id}:data", raw_obj)
-        await self._data_queue.enqueue(str(task_id))
+            if task.state != TaskState.PLAIN:
+                raise BadRequest(f"Задача с id {task_id!r} уже находится в обработке или завершена")
 
-    async def tomography_proc(self, task_id: TaskID, data: TomographyProc):
-        task = await self._redis_client.hgetall(str(task_id))
-        if not task:
-            raise NotFound(f"Задача с id {task_id!r} не существует")
+            await seisdata_repo.create(**data.model_dump(), task_id=task_id)
+            await task_repo.update(id=task_id, state=TaskState.IN_PROGRESS)
+            self._seisdata_queue.enqueue(task_id)
 
-        if task['state'] != TaskState.PENDING.value:
-            raise BadRequest(f"Задача с id {task_id!r} уже находится в обработке или завершена")
+    async def tomography_proc(self, task_id: TaskID, data: Tomography):
+        async with self._lazy_session() as session:
+            task_repo = TaskRepo(session)
+            tomography_repo = TomographyRepo(session)
+            task = await task_repo.get(id=task_id)
 
-        if task['step'] != TaskStep.DATA.value:
-            raise BadRequest(f"Задача с id {task_id!r} не прошла процесс обработки данных")
+            if not task:
+                raise NotFound(f"Задача с id {task_id!r} не существует")
 
-        raw_obj = pickle.dumps(data.model_dump())
-        await self._redis_client.hset(str(task_id), {'state': TaskState.IN_PROGRESS.value})
-        await self._redis_query_base.set(f"{task_id}:tomography", raw_obj)
-        await self._tomography_queue.enqueue(str(task_id))
+            if task.state != TaskState.PLAIN:
+                raise BadRequest(f"Задача с id {task_id!r} уже находится в обработке или завершена")
+
+            await tomography_repo.create(**data.model_dump(), task_id=task_id)
+            await task_repo.update(id=task_id, state=TaskState.IN_PROGRESS)
+            self._tomography_queue.enqueue(task_id)

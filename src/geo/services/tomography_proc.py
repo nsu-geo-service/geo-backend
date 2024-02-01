@@ -1,30 +1,31 @@
 import asyncio
 import logging
-import pickle
-from uuid import UUID
 
-from geo.models.schemas import TaskState
-from geo.models.schemas.tomography import TomographyProc
-from geo.utils.redis import RedisClient
-from geo.utils.redis_queue import RedisQueue
+from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+
+from geo.repositories import TaskRepo
+from geo.repositories.tomography import TomographyRepo
+from geo.utils.queue import Queue
 
 
-async def worker(redis_client: RedisClient, redis_data_base: RedisClient, queue: RedisQueue):
-    while True:
-        await asyncio.sleep(3)
-        task_id_str = await queue.dequeue()
-        if not task_id_str:
-            continue
+async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession]):
+    task_id = queue.dequeue()
+    if not task_id:
+        return
 
-        task_id = UUID(task_id_str)
-        if not await redis_client.exists(str(task_id)):
-            logging.error(f"[TomographyProc] Задача с id {task_id!r} не существует, но существовала в очереди")
-            continue
+    logging.info(f"[TomographyProc] Получена задача с id {task_id!r}")
+    async with lazy_session() as session:
+        task_repo = TaskRepo(session)
+        tomography_repo = TomographyRepo(session)
 
-        raw_obj = await redis_data_base.get(f"{task_id_str}:tomography")
-        if not raw_obj:
-            logging.error(f"[TomographyProc] Данные задачи с id {task_id!r} не существуют, но существовали ранее")
-            await redis_client.hset(str(task_id), {"status": TaskState.FAILED.value})
-            continue
-        data = TomographyProc.model_validate(pickle.loads(bytes.fromhex(raw_obj)))
-        print("worker 2")
+        task = await task_repo.get(id=task_id)
+        if not task:
+            logging.error(f"[TomographyProc] Задача с id {task_id!r} не существует")
+            return
+
+        data = await tomography_repo.get(task_id=task_id)
+        if not data:
+            logging.error(f"[TomographyProc] Данные задачи с task_id {task_id!r} не существуют")
+            return
+
+
