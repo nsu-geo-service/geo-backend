@@ -12,6 +12,17 @@ files = [
 ]
 
 [[package]]
+name = "aiomultiprocess"
+version = "0.9.0"
+description = "AsyncIO version of the standard multiprocessing module"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "aiomultiprocess-0.9.0-py3-none-any.whl", hash = "sha256:3036c4c881cfbc63674686e036097f22309017c6bf96b04722a542ac9cac7423"},
+    {file = "aiomultiprocess-0.9.0.tar.gz", hash = "sha256:07e7d5657697678d9d2825d4732dfd7655139762dee665167380797c02c68848"},
+]
+
+[[package]]
 name = "aiosqlite"
 version = "0.19.0"
 description = "asyncio bridge to the standard sqlite3 module"
@@ -87,13 +98,13 @@ zookeeper = ["kazoo"]
 
 [[package]]
 name = "certifi"
-version = "2023.11.17"
+version = "2024.2.2"
 description = "Python package for providing Mozilla's CA Bundle."
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "certifi-2023.11.17-py3-none-any.whl", hash = "sha256:e036ab49d5b79556f99cfc2d9320b34cfbe5be05c5871b51de9329f0603b0474"},
-    {file = "certifi-2023.11.17.tar.gz", hash = "sha256:9b469f3a900bf28dc19b8cfbf8019bf47f7fdd1a65a1d4ffb98fc14166beb4d1"},
+    {file = "certifi-2024.2.2-py3-none-any.whl", hash = "sha256:dc383c07b76109f368f6106eee2b593b04a011ea4d55f652c6ca24a754d1cdd1"},
+    {file = "certifi-2024.2.2.tar.gz", hash = "sha256:0569859f95fc761b18b45ef421b1290a0f65f147e92a1e5eb3e635f9a5e4e66f"},
 ]
 
 [[package]]
@@ -1187,13 +1198,13 @@ cli = ["click (>=5.0)"]
 
 [[package]]
 name = "pytz"
-version = "2023.4"
+version = "2024.1"
 description = "World timezone definitions, modern and historical"
 optional = false
 python-versions = "*"
 files = [
-    {file = "pytz-2023.4-py2.py3-none-any.whl", hash = "sha256:f90ef520d95e7c46951105338d918664ebfd6f1d995bd7d153127ce90efafa6a"},
-    {file = "pytz-2023.4.tar.gz", hash = "sha256:31d4583c4ed539cd037956140d695e42c033a19e984bfce9964a3f7d59bc2b40"},
+    {file = "pytz-2024.1-py2.py3-none-any.whl", hash = "sha256:328171f4e3623139da4983451950b28e95ac706e13f3f2630a879749e7a8b319"},
+    {file = "pytz-2024.1.tar.gz", hash = "sha256:2a29735ea9c18baf14b448846bde5a48030ed267578472d8955cd0e7443a9812"},
 ]
 
 [[package]]
@@ -1478,4 +1489,4 @@ standard = ["colorama (>=0.4)", "httptools (>=0.5.0)", "python-dotenv (>=0.13)",
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "3a85268ffd816cedca3dce2b8085e010f8173a7a4cc2734d20aa6b7046afd232"
+content-hash = "82e928de517bf51fbd1934ca5103ee022ae6504651f70da3d08a7a9d25665ad0"
