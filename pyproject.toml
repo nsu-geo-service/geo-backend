@@ -27,5 +27,5 @@ h5py = "^3.10.0"
 requires = ["poetry-core>=1.0.8"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.setuptools]
-package-dir = { "" = "src" }
+[[tool.poetry.packages]]
+include = "src/geo"
