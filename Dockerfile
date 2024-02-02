@@ -1,7 +1,4 @@
-FROM rockylinux:9.1.20230215
-
-# Install packages
-RUN dnf install -y wget tar openssh-clients python3.12 python3-pip && dnf clean all
+FROM python:3.12-bookworm
 
 RUN mkdir /app
 
@@ -19,15 +16,17 @@ COPY HPS_ST3D /app/HPS_ST3D
 ENV PATH="/app/HPS_ST3D/bin:${PATH}"
 
 # Setup FastAPI application
-COPY src /app/code
+COPY . /app/code
 WORKDIR /app/code
 
 RUN python -m venv venv
-RUN source venv/bin/activate
+RUN . venv/bin/activate
 RUN pip install -e .
 
+ENV DEBUG=0
+ENV FDSN_BASE="http://84.237.52.214:8080"
 ENV HPS_ST3D_EXEC="/app/HPS_ST3D/bin/HPS_ST3D"
+
 ENV PYTHONPATH=/app/code/src
 
-
-CMD ["uvicorn", "src.app:main", "--proxy-headers", "--host", "0.0.0.0", "--port", "8000", "--no-server-header"]
+CMD ["uvicorn", "src.geo.main:application", "--proxy-headers", "--host", "0.0.0.0", "--port", "8000", "--no-server-header"]
