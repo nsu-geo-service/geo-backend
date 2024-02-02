@@ -138,10 +138,11 @@ async def worker(
         event_name_id = {}
         for event_name, payload in events.items():
             event = await event_repo.create(
-                network=payload[0],
-                x=payload[1],
-                y=payload[2],
-                z=payload[3],
+                magnitude=payload[0],
+                network=payload[1],
+                x=payload[2],
+                y=payload[3],
+                z=payload[4],
                 task_id=task_id,
                 commit=True
             )
@@ -165,4 +166,3 @@ async def worker(
 
     os.remove(quake_file.name)
     os.remove(station_file.name)
-    print()

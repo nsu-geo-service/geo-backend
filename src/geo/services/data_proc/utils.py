@@ -181,8 +181,9 @@ def quake(filepath: str) -> tuple[
                             x = event.origins[0].longitude
                             y = event.origins[0].latitude
                             z = event.origins[0].depth
+                            magnitude = event.magnitudes[0].mag
 
-                            events[event_name] = (network, x, y, z)
+                            events[event_name] = (magnitude, network, x, y, z)
 
                             phase = Phase.P if event.picks[I[INDEX]].phase_hint else Phase.S
                             time = np.round(np.abs(time_origin - event.picks[I[INDEX]].time), 4)

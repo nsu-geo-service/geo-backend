@@ -17,6 +17,7 @@ class SeisData(BaseModel):
 
 
 class EventRow(BaseModel):
+    magnitude: float
     network: str
     x: float
     y: float
