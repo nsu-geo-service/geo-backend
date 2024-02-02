@@ -18,6 +18,7 @@ class Task(Base):
     stations = relationship("Station", back_populates="task")
     events = relationship("Event", back_populates="task")
     seisdata = relationship("SeisData", back_populates="task", uselist=False)
+    tomography = relationship("Tomography", back_populates="task", uselist=False)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_in = Column(DateTime(timezone=True), nullable=True)
