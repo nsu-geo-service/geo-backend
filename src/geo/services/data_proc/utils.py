@@ -32,16 +32,6 @@ def rename_station(title: str) -> str:
     return names.get(title, title)
 
 
-def get_network_codes():
-    path = 'http://84.237.52.214:8080/fdsnws/station/1/query?'
-    inventory = read_inventory(path)
-    codes = []
-    for network in inventory:
-        codes.append(network.code)
-
-    return codes
-
-
 def stations(filepath: str) -> dict[str, list]:
     inventory = read_inventory(filepath)
 
@@ -75,7 +65,7 @@ def quake(filepath: str) -> tuple[
     for index, event in enumerate(events_data):
         if len(event.picks) % 3 != 0:
             raise ValueError("Длина не делится на 3 без остатка. Ошибка.")
-        else:
+        elif len(event.origins) == 1:
             prev_station = []
             I = []
             for i in range(len(event.picks)):
