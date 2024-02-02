@@ -7,6 +7,7 @@ logger = getLogger(__name__)
 
 DEBUG_ENV = "DEBUG"
 FDSN_BASE_ENV = "FDSN_BASE"
+HPS_ST3D_EXEC_ENV = "HPS_ST3D_EXEC"
 
 
 class ConfigParseError(ValueError):
@@ -17,6 +18,7 @@ class ConfigParseError(ValueError):
 class Config:
     DEBUG: bool
     FDSN_BASE: str
+    HPS_ST3D_EXEC: str
 
 
 def to_bool(value) -> bool:
@@ -52,5 +54,6 @@ def load_env_config(env_file: str | os.PathLike = None) -> Config:
 
     return Config(
         DEBUG=to_bool(get_str_env(DEBUG_ENV)),
-        FDSN_BASE=get_str_env(FDSN_BASE_ENV)
+        FDSN_BASE=get_str_env(FDSN_BASE_ENV),
+        HPS_ST3D_EXEC=get_str_env(HPS_ST3D_EXEC_ENV)
     )
