@@ -192,7 +192,7 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
         # Датасеты "VP" и "VS"
         group_vgrid.create_dataset("VP", shape=Vp_st.shape, data=Vp_st, dtype='float64')
         group_vgrid.create_dataset("VS", shape=Vs_st.shape, data=Vs_st, dtype='float64')
-    await storage.save(f"{task_id}/input.h5", input_file.read(), "w")
+    await storage.save(f"{task_id}/input.h5", input_file.read(), "wb")
     os.remove(input_file.name)
 
     # Запуск процесса
