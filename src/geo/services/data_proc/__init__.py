@@ -5,8 +5,7 @@ from tempfile import NamedTemporaryFile
 from urllib.parse import urljoin
 
 import aiofiles
-import numpy as np
-import pandas as pd
+from aiomultiprocess import Worker
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from geo.models.schemas import TaskState, TaskStep
@@ -19,7 +18,6 @@ from geo.services.data_proc.utils import (
     quake,
     stations
 )
-from geo.services.storage import FileStorage
 from geo.utils.http import HttpProcessor
 from geo.utils.queue import Queue
 
@@ -30,6 +28,13 @@ async def fetch_from_base(http_client: HttpProcessor, url: str, params: dict = N
             url=url,
             params=params
         )
+
+
+async def cpu_worker(quake_file: str, station_file: str):
+    events, detections = quake(quake_file)
+    station_table = stations(station_file)
+
+    return events, detections, station_table
 
 
 async def worker(
@@ -111,9 +116,11 @@ async def worker(
         await file.write(quake_xml)
 
     logging.info(f"[SeisDataProc] Обработка данных")
-    # CPU
-    events, detections = quake(quake_file.name)
-    station_table = stations(station_file.name)
+
+    events, detections, station_table = await Worker(
+        target=cpu_worker,
+        args=(quake_file.name, station_file.name)
+    )
 
     async with lazy_session() as session:
         task_repo = TaskRepo(session)
