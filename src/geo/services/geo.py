@@ -67,7 +67,7 @@ class GeoApplicationService:
             if not task:
                 raise NotFound(f"Задача с id {task_id!r} не существует")
 
-            if task.state != TaskState.PLAIN:
+            if task.state != TaskState.PENDING and task.step != TaskStep.SEISDATA:
                 raise BadRequest(f"Задача с id {task_id!r} уже находится в обработке или завершена")
 
             await tomography_repo.create(**data.model_dump(), task_id=task_id)
