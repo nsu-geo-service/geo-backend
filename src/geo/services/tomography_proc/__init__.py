@@ -113,6 +113,7 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
     X_Y_Z_rcvrs = np.column_stack((x_station, y_station, z_station))
 
     input_file = NamedTemporaryFile(delete_on_close=False)
+    logging.info(input_file.name)
     with h5py.File(input_file.name, "w") as file:
         hps_st3d_group = file.create_group("HPS_ST3D")
         group_input = hps_st3d_group.create_group("Input")
@@ -193,7 +194,7 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
         group_vgrid.create_dataset("VP", shape=Vp_st.shape, data=Vp_st, dtype='float64')
         group_vgrid.create_dataset("VS", shape=Vs_st.shape, data=Vs_st, dtype='float64')
     await storage.save(f"{task_id}/input.h5", input_file.read(), "wb")
-    os.remove(input_file.name)
+    # os.remove(input_file.name)
 
     # Запуск процесса
     is_ok = await Worker(
