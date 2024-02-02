@@ -37,8 +37,9 @@ class BaseRepository(Generic[T]):
         return (await self._session.execute(select(self.table).filter_by(**kwargs))).scalars().first()
 
     async def get_all(
-            self, limit: int = 100,
-            offset: int = 0,
+            self,
+            limit: int = None,
+            offset: int = None,
             order_by: str = "id",
             **kwargs
     ) -> list[Optional[T]]:
@@ -51,9 +52,18 @@ class BaseRepository(Generic[T]):
         :param order_by: сортировка
         :return:
         """
-        result = await self._session.execute(
-            select(self.table).filter_by(**kwargs).order_by(text(order_by)).limit(limit).offset(offset)
+        stmt = (
+            select(self.table)
+            .filter_by(**kwargs)
+            .order_by(text(order_by))
         )
+
+        if limit:
+            stmt = stmt.limit(limit)
+        if offset:
+            stmt = stmt.offset(offset)
+
+        result = await self._session.execute(stmt)
         return result.scalars().all()
 
     async def update(self, id: uuid.UUID, commit: bool = True, **kwargs) -> None:
