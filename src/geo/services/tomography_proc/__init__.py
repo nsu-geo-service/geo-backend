@@ -1,5 +1,8 @@
 import logging
+import os
+from tempfile import NamedTemporaryFile
 
+import aiofiles
 import h5py
 import numpy as np
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
@@ -91,7 +94,8 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
     X_Y_Z_srcs = np.column_stack((x_event, y_event, z_event))
     X_Y_Z_rcvrs = np.column_stack((x_station, y_station, z_station))
 
-    with h5py.File("HPS_ST3D_1.h5", "w") as file:
+    input_file = NamedTemporaryFile(delete_on_close=False)
+    with h5py.File(input_file.name, "w") as file:
         hps_st3d_group = file.create_group("HPS_ST3D")
         group_input = hps_st3d_group.create_group("Input")
         group_input.attrs["IterMax"] = np.array([data.iter_max], dtype=np.int64)
@@ -170,3 +174,5 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
         # Датасеты "VP" и "VS"
         group_vgrid.create_dataset("VP", shape=Vp_st.shape, data=Vp_st, dtype='float64')
         group_vgrid.create_dataset("VS", shape=Vs_st.shape, data=Vs_st, dtype='float64')
+    await storage.save(f"{task_id}/HPS_ST3D_1.h5", input_file.read(), "w")
+    os.remove(input_file.name)
