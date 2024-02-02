@@ -1,5 +1,6 @@
 import httpx
 
+
 class HttpProcessor:
 
     def __init__(self, timeout: int = 1, user_agent: str = None):
