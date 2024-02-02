@@ -17,8 +17,7 @@ from geo.repositories.seisdata import SeisDataRepo
 from geo.repositories.station import StationRepo
 from geo.services.data_proc.utils import (
     quake,
-    stations,
-    relief_reader,
+    stations
 )
 from geo.services.storage import FileStorage
 from geo.utils.http import HttpProcessor
@@ -37,8 +36,7 @@ async def worker(
         queue: Queue,
         lazy_session: async_sessionmaker[AsyncSession],
         http_client: HttpProcessor,
-        fdsn_base: str,
-        storage: FileStorage,
+        fdsn_base: str
 
 ):
     task_id = queue.dequeue()
