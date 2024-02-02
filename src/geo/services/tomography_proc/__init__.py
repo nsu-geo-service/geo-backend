@@ -25,7 +25,7 @@ async def cpu_worker(executable: str, input_file: str, output_file: str):
     is_ok = False
     try:
         subprocess.run(
-            [ executable, input_file, output_file ],
+            [executable, input_file, output_file],
             check=True,
         )
         is_ok = True
@@ -192,13 +192,13 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
         # Датасеты "VP" и "VS"
         group_vgrid.create_dataset("VP", shape=Vp_st.shape, data=Vp_st, dtype='float64')
         group_vgrid.create_dataset("VS", shape=Vs_st.shape, data=Vs_st, dtype='float64')
-    await storage.save(f"{task_id}/HPS_ST3D_1.h5", input_file.read(), "w")
+    await storage.save(f"{task_id}/input.h5", input_file.read(), "w")
     os.remove(input_file.name)
 
     # Запуск процесса
     is_ok = await Worker(
         target=cpu_worker,
-        args=(executable, storage.abs_path("{task_id}/HPS_ST3D_1.h5"), storage.abs_path("{task_id}/output.h5"))
+        args=(executable, storage.abs_path("{task_id}/input.h5"), storage.abs_path("{task_id}/output.h5"))
     )
     async with lazy_session() as session:
         task_repo = TaskRepo(session)
@@ -214,4 +214,3 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
                 id=task_id,
                 state=TaskState.FAILED
             )
-
