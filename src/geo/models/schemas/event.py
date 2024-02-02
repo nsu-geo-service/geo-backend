@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 
 class Event(BaseModel):
+    time: datetime
     magnitude: float
     network: str
     x: float

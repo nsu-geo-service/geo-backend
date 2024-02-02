@@ -53,7 +53,7 @@ async def worker(
     if not task_id:
         return
 
-    logging.info(f"[SeisDataProc] Получена задача с id {task_id!r}")
+    logging.debug(f"[SeisDataProc] Получена задача с id {task_id!r}")
     async with lazy_session() as session:
         task_repo = TaskRepo(session)
         seisdata_repo = SeisDataRepo(session)
@@ -126,7 +126,7 @@ async def worker(
     async with aiofiles.open(quake_file.name, 'w') as file:
         await file.write(quake_xml)
 
-    logging.info(f"[SeisDataProc] Обработка данных")
+    logging.debug(f"[SeisDataProc] Обработка данных")
 
     events, detections, station_table = await Worker(
         target=cpu_worker,
@@ -154,16 +154,16 @@ async def worker(
         event_name_id = {}
         for event_name, payload in events.items():
             event = await event_repo.create(
-                magnitude=payload[0],
-                network=payload[1],
-                x=payload[2],
-                y=payload[3],
-                z=payload[4],
+                time=payload[0].datetime,
+                magnitude=payload[1],
+                network=payload[2],
+                x=payload[3],
+                y=payload[4],
+                z=payload[5],
                 task_id=task_id,
                 commit=True
             )
             event_name_id[event_name] = event.id
-
         for event_name, payload in detections.items():
             detection_list = payload[0]
             station_name = payload[1]

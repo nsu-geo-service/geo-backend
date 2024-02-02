@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, VARCHAR, DOUBLE, ForeignKey
+from sqlalchemy import Column, VARCHAR, DOUBLE, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 
 from geo.db import Base
@@ -11,6 +11,7 @@ class Event(Base):
     __tablename__ = "events"
 
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    time = Column(DateTime(timezone=True), nullable=False)
     network = Column(VARCHAR(32), nullable=False)
     magnitude = Column(DOUBLE(), nullable=False)
     x = Column(DOUBLE(), nullable=False)
