@@ -6,6 +6,7 @@ from urllib.parse import urljoin
 
 import aiofiles
 from aiomultiprocess import Worker
+from httpx import HTTPError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from geo.models.schemas import TaskState, TaskStep
@@ -23,11 +24,15 @@ from geo.utils.queue import Queue
 
 
 async def fetch_from_base(http_client: HttpProcessor, url: str, params: dict = None):
-    async with http_client as client:
-        return await client.get(
-            url=url,
-            params=params
-        )
+    retry = 3
+    for index in range(retry):
+        try:
+            async with http_client as client:
+                return await client.get(url=url, params=params)
+        except HTTPError as error:
+            logging.error(f"[SeisDataProc] Ошибка при получении данных {error!r}, попытка {index + 1}/{retry}")
+            continue
+    return None
 
 
 async def cpu_worker(quake_file: str, station_file: str):
@@ -95,6 +100,12 @@ async def worker(
             }
         )
     )
+    if not quake_resp or not station_resp:
+        logging.error(f"[SeisDataProc] Ошибка при получении данных станций")
+        async with lazy_session() as session:
+            task_repo = TaskRepo(session)
+            await task_repo.update(id=task_id, state=TaskState.FAILED)
+        return
 
     station_xml = station_resp.text
     quake_xml = quake_resp.text
