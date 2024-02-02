@@ -44,6 +44,7 @@ def start_workers(app: FastAPI, fdsn_base: str):
         args=(
             getattr(app, "state").tomography_queue,
             getattr(app, "state").db_session,
+            getattr(app, "state").storage
         ),
     )
 
