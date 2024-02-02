@@ -9,7 +9,7 @@ from geo.views import SeisDataResponse, TomographyResponse, EventsResponse, Stat
 geo_router = APIRouter(prefix="/geo", tags=["Geo"])
 
 
-@geo_router.get("/{task_id}/data", response_model=SeisDataResponse, status_code=http_status.HTTP_200_OK)
+@geo_router.get("/{task_id}/seisdata", response_model=SeisDataResponse, status_code=http_status.HTTP_200_OK)
 async def seisdata(
         task_id: TaskID,
         services: ServiceFactory = Depends(get_services)
@@ -33,7 +33,7 @@ async def tomography(
     return TomographyResponse(content=await services.geo.tomography(task_id=task_id))
 
 
-@geo_router.get("/{task_id}/data/events", response_model=EventsResponse, status_code=http_status.HTTP_200_OK)
+@geo_router.get("/{task_id}/seisdata/events", response_model=EventsResponse, status_code=http_status.HTTP_200_OK)
 async def event_table(
         task_id: TaskID,
         services: ServiceFactory = Depends(get_services)
@@ -45,13 +45,13 @@ async def event_table(
     return EventsResponse(content=await services.geo.events(task_id))
 
 
-@geo_router.get("/{task_id}/data/stations", response_model=StationsResponse, status_code=http_status.HTTP_200_OK)
+@geo_router.get("/{task_id}/seisdata/stations", response_model=StationsResponse, status_code=http_status.HTTP_200_OK)
 async def station_table(
         task_id: TaskID,
         services: ServiceFactory = Depends(get_services)
 ):
     """
-    Таблица событий
+    Таблица станций
 
     """
     return StationsResponse(content=await services.geo.stations(task_id))
