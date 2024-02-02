@@ -27,7 +27,7 @@ class FileStorage:
 
     async def save(self, filepath: os.PathLike | str, data: bytes | str, mode: FILE_MODE) -> None:
         path = os.path.join(self.path, filepath)
-        os.makedirs(os.path.basename(path), exist_ok=True)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         async with aiofiles.open(path, mode) as f:
             await f.write(data)
 
