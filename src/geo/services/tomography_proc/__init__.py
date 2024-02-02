@@ -1,12 +1,15 @@
 import logging
 import os
+import subprocess
 from tempfile import NamedTemporaryFile
 
 import aiofiles
 import h5py
 import numpy as np
+from aiomultiprocess import Worker
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
+from geo.models.schemas import TaskState, TaskStep
 from geo.repositories import TaskRepo
 from geo.repositories.detection import DetectionRepo
 from geo.repositories.event import EventRepo
@@ -17,7 +20,22 @@ from geo.services.tomography_proc.utils import change_coords_to_ST3D, relief_rea
 from geo.utils.queue import Queue
 
 
-async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], storage: FileStorage):
+async def cpu_worker(executable: str, input_file: str, output_file: str):
+    logging.info(f"[TomographyProc] Запуск процесса {input_file!r} -> {output_file!r}")
+    is_ok = False
+    try:
+        subprocess.run(
+            [ executable, input_file, output_file ],
+            check=True,
+        )
+        is_ok = True
+    except subprocess.CalledProcessError as error:
+        logging.error(error)
+    logging.info(f"[TomographyProc] Процесс {input_file!r} завершен")
+    return is_ok
+
+
+async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], storage: FileStorage, executable: str):
     task_id = queue.dequeue()
     if not task_id:
         return
@@ -176,3 +194,24 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
         group_vgrid.create_dataset("VS", shape=Vs_st.shape, data=Vs_st, dtype='float64')
     await storage.save(f"{task_id}/HPS_ST3D_1.h5", input_file.read(), "w")
     os.remove(input_file.name)
+
+    # Запуск процесса
+    is_ok = await Worker(
+        target=cpu_worker,
+        args=(executable, storage.abs_path("{task_id}/HPS_ST3D_1.h5"), storage.abs_path("{task_id}/output.h5"))
+    )
+    async with lazy_session() as session:
+        task_repo = TaskRepo(session)
+
+        if is_ok:
+            await task_repo.update(
+                id=task_id,
+                state=TaskState.DONE,
+                step=TaskStep.TOMOGRAPHY
+            )
+        else:
+            await task_repo.update(
+                id=task_id,
+                state=TaskState.FAILED
+            )
+
