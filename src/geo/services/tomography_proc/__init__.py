@@ -198,7 +198,7 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
     # Запуск процесса
     is_ok = await Worker(
         target=cpu_worker,
-        args=(executable, storage.abs_path("{task_id}/input.h5"), storage.abs_path("{task_id}/output.h5"))
+        args=(executable, storage.abs_path(f"{task_id}/input.h5"), storage.abs_path(f"{task_id}/output.h5"))
     )
     async with lazy_session() as session:
         task_repo = TaskRepo(session)
