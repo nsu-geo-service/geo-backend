@@ -14,25 +14,3 @@ class SeisData(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-class EventRow(BaseModel):
-    magnitude: float
-    network: str
-    x: float
-    y: float
-    z: float
-
-    class Config:
-        from_attributes = True
-
-
-class StationRow(BaseModel):
-    network: str
-    station: str
-    x: float
-    y: float
-    z: float
-
-    class Config:
-        from_attributes = True

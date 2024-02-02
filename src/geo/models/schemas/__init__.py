@@ -7,9 +7,10 @@ from .task import Task
 from .task import TaskState
 from .task import TaskStep
 
-from .data import SeisData
-from .data import EventRow
-from .data import StationRow
+from .seisdata import SeisData
 from .tomography import Tomography
 from .detection import Detection
 from .detection import Phase
+
+from .event import Event
+from .station import Station

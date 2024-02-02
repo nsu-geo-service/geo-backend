@@ -2,10 +2,14 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
 from geo.exceptions import NotFound, BadRequest
 from geo.models.schemas import TaskID, TaskState, TaskStep
-from geo.models.schemas.data import SeisData
+from geo.models.schemas.seisdata import SeisData
+from geo.models.schemas.event import Event
+from geo.models.schemas.station import Station
 from geo.models.schemas.tomography import Tomography
 from geo.repositories import TaskRepo
+from geo.repositories.event import EventRepo
 from geo.repositories.seisdata import SeisDataRepo
+from geo.repositories.station import StationRepo
 from geo.repositories.tomography import TomographyRepo
 from geo.utils.queue import Queue
 
@@ -69,3 +73,19 @@ class GeoApplicationService:
             await tomography_repo.create(**data.model_dump(), task_id=task_id)
             await task_repo.update(id=task_id, state=TaskState.IN_PROGRESS)
             self._tomography_queue.enqueue(task_id)
+
+    async def events(self, task_id: TaskID) -> list[Event]:
+        async with self._lazy_session() as session:
+            event_repo = EventRepo(session)
+            events = await event_repo.get_all(
+                task_id=task_id
+            )
+        return [Event.model_validate(event) for event in events]
+
+    async def stations(self, task_id: TaskID) -> list[Station]:
+        async with self._lazy_session() as session:
+            station_repo = StationRepo(session)
+            stations = await station_repo.get_all(
+                task_id=task_id
+            )
+        return [Station.model_validate(station) for station in stations]

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from fastapi import status as http_status
 
 from geo.models.schemas import TaskID
-from geo.models.schemas.data import SeisData
+from geo.models.schemas.seisdata import SeisData
 from geo.models.schemas.tomography import Tomography
 from geo.services import ServiceFactory
 from geo.services.di import get_services

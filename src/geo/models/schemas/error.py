@@ -1,10 +1,9 @@
-from enum import unique, Enum
+from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel
 
 
-@unique
 class ErrorType(int, Enum):
     MESSAGE = 1
     FIELD_LIST = 2
