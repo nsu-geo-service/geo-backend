@@ -114,7 +114,7 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
 
     input_file = NamedTemporaryFile(delete_on_close=False)
     # logging.info(input_file.name)
-    with h5py.File("input_file.h5", "w") as file:
+    with h5py.File("input_file.h5", "wb") as file:
         hps_st3d_group = file.create_group("HPS_ST3D")
         group_input = hps_st3d_group.create_group("Input")
         group_input.attrs["IterMax"] = np.array([data.iter_max], dtype=np.int64)
