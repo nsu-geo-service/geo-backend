@@ -24,7 +24,7 @@ async def init_db(app: FastAPI, *, echo: bool = False) -> None:
         await conn.run_sync(tables.Base.metadata.create_all)
 
 
-def start_workers(app: FastAPI, fdsn_base: str):
+def start_workers(app: FastAPI, fdsn_base: str, executable: str):
     scheduler = AsyncIOScheduler()
     scheduler.add_job(
         func=data_proc.worker,
@@ -44,7 +44,8 @@ def start_workers(app: FastAPI, fdsn_base: str):
         args=(
             getattr(app, "state").tomography_queue,
             getattr(app, "state").db_session,
-            getattr(app, "state").storage
+            getattr(app, "state").storage,
+            executable
         ),
     )
 
@@ -65,7 +66,7 @@ class LifeSpan:
         getattr(self._app, "state").data_queue = Queue()
         getattr(self._app, "state").tomography_queue = Queue()
         await init_db(self._app, echo=self._config.DEBUG)
-        start_workers(self._app, self._config.FDSN_BASE)
+        start_workers(self._app, self._config.FDSN_BASE, self._config.HPS_ST3D_EXEC)
         logging.info("FastAPI Успешно запущен.")
 
     async def shutdown_handler(self) -> None:
