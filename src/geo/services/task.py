@@ -24,8 +24,9 @@ class TaskApplicationService:
         async with self._lazy_session() as session:
             task_repo = TaskRepo(session)
             tasks = await task_repo.get_all(offset=offset, limit=per_page, order_by='created_at')
-
-        return [Task.model_validate(task) for task in tasks]
+        result = [Task.model_validate(task) for task in tasks]
+        result.reverse()
+        return result
 
     async def get_task(self, task_id: TaskID) -> Task:
         async with self._lazy_session() as session:
