@@ -9,7 +9,7 @@ import numpy as np
 from aiomultiprocess import Worker
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
-from geo.models.schemas import TaskState, TaskStep
+from geo.models.schemas import TaskState, TaskStep, Phase
 from geo.repositories import TaskRepo
 from geo.repositories.detection import DetectionRepo
 from geo.repositories.event import EventRepo
@@ -86,8 +86,8 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
     stations_y = [station.y for station in stations]
     stations_z = [station.z for station in stations]
 
-    p_times = [detection.time for detection in detections if detection.phase == "P"]
-    s_times = [detection.time for detection in detections if detection.phase == "S"]
+    p_times = [detection.time for detection in detections if detection.phase == Phase.P]
+    s_times = [detection.time for detection in detections if detection.phase == Phase.S]
 
     p_obs_time = np.asarray(p_times, dtype=np.float64)
     s_obs_time = np.asarray(s_times, dtype=np.float64)
@@ -95,16 +95,16 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
     stations_df = np.asarray([el.station for el in stations], dtype=np.float64)
 
     x_event, y_event, z_event = change_coords_to_ST3D(
-        FI=np.array(events_x),
-        TET=np.array(events_y),
-        h=np.array(events_z),
+        FI=np.array(events_x, dtype=np.float64),
+        TET=np.array(events_y, dtype=np.float64),
+        h=np.array(events_z, dtype=np.float64),
         fi0=y_middle,
         tet0=x_middle
     )
     x_station, y_station, z_station = change_coords_to_ST3D(
-        FI=np.array(stations_x),
-        TET=np.array(stations_y),
-        h=np.array(stations_z),
+        FI=np.array(stations_x, dtype=np.float64),
+        TET=np.array(stations_y, dtype=np.float64),
+        h=np.array(stations_z, dtype=np.float64),
         fi0=y_middle,
         tet0=x_middle
     )
