@@ -34,8 +34,7 @@ def start_workers(app: FastAPI, fdsn_base: str):
             getattr(app, "state").data_queue,
             getattr(app, "state").db_session,
             getattr(app, "state").http_client,
-            fdsn_base,
-            getattr(app, "state").storage,
+            fdsn_base
         ),
     )
     scheduler.add_job(
