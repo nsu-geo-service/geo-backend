@@ -3,4 +3,4 @@ from geo.models import schemas
 
 
 class EventsResponse(BaseView):
-    content: schemas.Event
+    content: list[schemas.Event]
