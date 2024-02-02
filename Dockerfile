@@ -3,15 +3,15 @@ FROM python:3.12-bookworm
 RUN mkdir /app
 
 # Setup OpenMPI
-#COPY openmpi-4.0.0 /app/openmpi-4.0.0
-#RUN ln -s /app/openmpi-4.0.0 /app/openmpi
+COPY openmpi-4.0.0 /app/openmpi-4.0.0
+RUN ln -s /app/openmpi-4.0.0 /app/openmpi
 
 ENV PATH="/app/openmpi/bin:${PATH}"
 ENV LD_LIBRARY_PATH="/app/openmpi/lib"
 ENV OPAL_PREFIX="/app/openmpi"
 
 # Setup HPS_ST3D
-#COPY HPS_ST3D /app/HPS_ST3D
+COPY HPS_ST3D /app/HPS_ST3D
 
 ENV PATH="/app/HPS_ST3D/bin:${PATH}"
 
