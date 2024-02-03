@@ -1,3 +1,4 @@
+import datetime
 from typing import Iterable
 
 import numpy as np
@@ -60,8 +61,8 @@ def stations(filepath: str) -> dict[str, list]:
 
 
 def quake(filepath: str) -> tuple[
-    dict[str, tuple[str, str, float, float, float]],
-    dict[int, tuple[list[tuple[Phase, float]], str]]
+    dict[str, tuple[datetime.datetime, float, str, float, float, float]],
+    dict[int, tuple[list[Phase, float, str]]]
 ]:
     events = {}
     detections = {}
@@ -94,21 +95,21 @@ def quake(filepath: str) -> tuple[
                             z = event.origins[0].depth
                             magnitude = event.magnitudes[0].mag
 
-                            events[event_name] = (time_origin, magnitude, network, x, y, z)
+                            events[event_name] = (time_origin.datetime, magnitude, network, x, y, z)
 
                             phase = Phase.P if event.picks[I[INDEX]].phase_hint == "P" else Phase.S
                             time = np.round(np.abs(time_origin - event.picks[I[INDEX]].time), 4)
 
                             if event_name not in detections:
-                                detections[event_name] = ([(phase, time)], rename_station(current_station))
+                                detections[event_name] = [(phase, time, rename_station(current_station))]
                             else:
-                                detections[event_name][0].append((phase, time))
+                                detections[event_name].append((phase, time, rename_station(current_station)))
 
                             # Add data for the current pick
                             phase = Phase.P if event.picks[i].phase_hint == "P" else Phase.S
                             time = np.round(np.abs(time_origin - event.picks[i].time), 4)
 
-                            detections[event_name][0].append((phase, time))
+                            detections[event_name].append((phase, time, rename_station(current_station)))
 
                             prev_station.append(event.picks[i].waveform_id.station_code)
                             I.append(i)

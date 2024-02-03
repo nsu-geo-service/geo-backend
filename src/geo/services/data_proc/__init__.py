@@ -133,6 +133,7 @@ async def worker(
         args=(quake_file.name, station_file.name)
     )
 
+    # events, detections, station_table = await cpu_worker(quake_file.name, station_file.name)
     async with lazy_session() as session:
         task_repo = TaskRepo(session)
         station_repo = StationRepo(session)
@@ -154,7 +155,7 @@ async def worker(
         event_name_id = {}
         for event_name, payload in events.items():
             event = await event_repo.create(
-                time=payload[0].datetime,
+                time=payload[0],
                 magnitude=payload[1],
                 network=payload[2],
                 event=event_name,
@@ -165,12 +166,9 @@ async def worker(
                 commit=True
             )
             event_name_id[event_name] = event.id
-        for event_name, payload in detections.items():
-            detection_list = payload[0]
-            station_name = payload[1]
-            station_id = (await station_repo.get(station=station_name, task_id=task_id)).id
-
+        for event_name, detection_list in detections.items():
             for detection in detection_list:
+                station_id = (await station_repo.get(station=detection[2], task_id=task_id)).id
                 await detection_repo.create(
                     phase=detection[0],
                     time=detection[1],
