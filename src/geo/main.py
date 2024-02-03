@@ -50,7 +50,7 @@ class ApplicationFactory:
         app.add_event_handler("shutdown", lifespan.shutdown_handler)
 
         logging.debug("Регистрация маршрутов API")
-        api_router = APIRouter(prefix="/api/v1")
+        api_router = APIRouter(prefix="/api/v1" if config.DEBUG else "")
         api_router.include_router(task_router)
         api_router.include_router(proc_router)
         api_router.include_router(geo_router)

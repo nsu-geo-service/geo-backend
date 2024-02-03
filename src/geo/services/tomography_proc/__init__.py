@@ -139,8 +139,8 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
         group_input.attrs["TomoMatSmoothVS4V"] = np.asarray([data.mat_damping_VS4V], dtype=np.float64)
 
         # Атрибуты "VLimitsP" и "VLimitsS"
-        group_input.attrs["VLimitsP"] = np.array([0.1, 10], dtype=np.float64)
-        group_input.attrs["VLimitsS"] = np.array([0.1, 10], dtype=np.float64)
+        group_input.attrs["VLimitsP"] = np.array(data.v_limits_p, dtype=np.float64)
+        group_input.attrs["VLimitsS"] = np.array(data.v_limits_s, dtype=np.float64)
 
         # Группа "RaysPsv"
         group_rays_psv = group_input.create_group("RaysPsv")
