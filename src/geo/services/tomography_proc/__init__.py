@@ -97,14 +97,21 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
     s_obs_time = np.asarray(s_times, dtype=np.float64)
 
     grouped_detections_by_event = [
-        len(list(group)) for key, group in groupby(detections, key=lambda detection: detection.event_id)
+        len(list(group))
+        for key, group in groupby(
+            filter(lambda detection: detection.phase == Phase.P, detections),
+            key=lambda detection: detection.event_id
+        )
     ]
     events_range = []
     for count, _id in zip(grouped_detections_by_event, range(len(events))):
         events_range.extend([_id] * count)
 
     events_df = np.asarray(events_range, dtype=np.float64)
-    stations_df = np.asarray([detection.station.station for detection in detections], dtype=np.float64)
+    stations_df = np.asarray(
+        [detection.station.station for detection in detections if detection.phase == Phase.P],
+        dtype=np.float64
+    )
 
     x_event, y_event, z_event = change_coords_to_ST3D(
         FI=np.array(events_x, dtype=np.float64),
