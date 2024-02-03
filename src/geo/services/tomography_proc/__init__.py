@@ -1,10 +1,6 @@
 import logging
-import os
 import subprocess
-from itertools import groupby
-from tempfile import NamedTemporaryFile
 
-import aiofiles
 import h5py
 import numpy as np
 from aiomultiprocess import Worker
@@ -70,16 +66,13 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
         station_repo = StationRepo(session)
         detection_repo = DetectionRepo(session)
         events = await event_repo.get_all(
-            task_id=task_id,
-            order_by="created_at"
+            task_id=task_id
         )
         stations = await station_repo.get_all(
-            task_id=task_id,
-            order_by="created_at"
+            task_id=task_id
         )
         detections = await detection_repo.get_all_by_task(
-            task_id=task_id,
-            order_by="created_at"
+            task_id=task_id
         )
 
     events_x = [event.x for event in events]
@@ -96,18 +89,10 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
     p_obs_time = np.asarray(p_times, dtype=np.float64)
     s_obs_time = np.asarray(s_times, dtype=np.float64)
 
-    grouped_detections_by_event = [
-        len(list(group))
-        for key, group in groupby(
-            filter(lambda detection: detection.phase == Phase.P, detections),
-            key=lambda detection: detection.event_id
-        )
-    ]
-    events_range = []
-    for count, _id in zip(grouped_detections_by_event, range(len(events))):
-        events_range.extend([_id] * count)
-
-    events_df = np.asarray(events_range, dtype=np.float64)
+    events_df = np.asarray(
+        [detection.event.event for detection in detections if detection.phase == Phase.P],
+        dtype=np.float64
+    )
     stations_df = np.asarray(
         [detection.station.station for detection in detections if detection.phase == Phase.P],
         dtype=np.float64
