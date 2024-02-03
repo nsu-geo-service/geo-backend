@@ -126,6 +126,7 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
 
     input_file_path = storage.abs_path(f"{task_id}/input.h5")
     output_file_path = storage.abs_path(f"{task_id}/output.h5")
+    await storage.save(input_file_path, "", "w")
     with h5py.File(input_file_path, "w") as file:
         hps_st3d_group = file.create_group("HPS_ST3D")
         group_input = hps_st3d_group.create_group("Input")
