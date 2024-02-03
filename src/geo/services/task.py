@@ -51,6 +51,8 @@ class TaskApplicationService:
             task = await task_repo.get(id=task_id)
             if not task:
                 raise NotFound(f"Задача с id {task_id!r} не найдена")
+            if task.state == TaskState.IN_PROGRESS:
+                raise NotFound(f"Задача с id {task_id!r} находится в обработке")
             await task_repo.delete(id=task_id)
 
     async def count(self) -> int:
