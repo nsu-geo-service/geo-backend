@@ -1,6 +1,7 @@
 from typing import Iterable
 
 import numpy as np
+import pandas as pd
 from obspy import read_inventory, read_events
 from obspy.core.event import Event
 
@@ -51,7 +52,11 @@ def stations(filepath: str) -> dict[str, list]:
             data['x'].append(station.longitude)
             data['z'].append(station.elevation / 1000)
 
-    return data
+    df = pd.DataFrame(data)
+    df['station'] = df['station'].astype(int)
+    df.sort_values(by='station', inplace=True)
+
+    return df.to_dict(orient='list')
 
 
 def quake(filepath: str) -> tuple[
