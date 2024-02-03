@@ -1,35 +1,9 @@
 import numpy as np
 import pandas as pd
-from obspy import read_events
 from scipy.ndimage import gaussian_filter, zoom
-
-
-def change_station_on_number(dataframe):
-    dataframe['Station'] = dataframe['Station'].str.replace('SML04', '1')
-    dataframe['Station'] = dataframe['Station'].str.replace('SML02', '2')
-    dataframe['Station'] = dataframe['Station'].str.replace('SML05', '3')
-    dataframe['Station'] = dataframe['Station'].str.replace('SML06', '4')
-
-    dataframe['Station'] = dataframe['Station'].str.replace('SML07', '5')
-    dataframe['Station'] = dataframe['Station'].str.replace('SML15', '6')
-    dataframe['Station'] = dataframe['Station'].str.replace('SML16', '7')
-    dataframe['Station'] = dataframe['Station'].str.replace('SML00', '8')
-
-    dataframe['Station'] = dataframe['Station'].str.replace('SML17', '9')
-    dataframe['Station'] = dataframe['Station'].str.replace('SML18', '10')
-    dataframe['Station'] = dataframe['Station'].str.replace('SML01', '11')
-    dataframe['Station'] = dataframe['Station'].str.replace('SML03', '12')
-
-    dataframe['Station'] = dataframe['Station'].str.replace('SML08', '13')
-    dataframe['Station'] = dataframe['Station'].str.replace('SML09', '14')
-    dataframe['Station'] = dataframe['Station'].str.replace('SML10', '15')
-    dataframe['Station'] = dataframe['Station'].str.replace('SML11', '16')
-
-    dataframe['Station'] = dataframe['Station'].str.replace('SML12', '17')
-    dataframe['Station'] = dataframe['Station'].str.replace('SML13', '18')
-    dataframe['Station'] = dataframe['Station'].str.replace('SML14', '19')
-
-    return dataframe
+import h5py
+from matplotlib.colors import ListedColormap
+import pyvista as pv
 
 
 def relief_read(path_relief, grid_size):
@@ -103,93 +77,6 @@ def create_start_model(data: list[list[float]], grid_size):
     Vs_st = gaussian_filter(Vs_st, sigma=2)
 
     return Vp_st, Vs_st
-def get_quake_xml(file):
-
-    data = {'Network': [],
-            'Station': [],
-            'Phase': [],
-            'Time': [],
-            'Event': [],
-            'Coord_x_event': [],
-            'Coord_y_event': [],
-            'Coord_z_event': []
-            }
-
-    events = read_events(file)
-    for indx, event in enumerate(events):
-        if len(event.picks) % 3 != 0:
-            raise ValueError("Длина не делится на 3 без остатка. Ошибка.")
-        else:
-            if len(event.origins) == 1:
-                prev_station = []
-                I = []
-                for i in range(len(event.picks)):
-                    if event.picks[i].waveform_id.channel_code == 'HHN':
-                        time_origin = event.origins[0].time
-
-                        if not prev_station:
-                            prev_station.append(event.picks[i].waveform_id.station_code)
-                            I.append(i)
-
-                        else:
-                            current_station = event.picks[i].waveform_id.station_code
-                            search_station_equal = np.where(np.array(prev_station) == current_station)[0]
-                            if len(search_station_equal) > 0:
-                                INDEX = search_station_equal[0]
-
-                                data['Network'].append(event.picks[I[INDEX]].waveform_id.network_code)
-                                data['Station'].append(event.picks[I[INDEX]].waveform_id.station_code)
-                                data['Phase'].append(event.picks[I[INDEX]].phase_hint)
-                                data['Time'].append(np.round(np.abs(time_origin - event.picks[I[INDEX]].time), 4))
-                                data['Event'].append(indx)
-                                data['Coord_x_event'].append(event.origins[0].longitude)
-                                data['Coord_y_event'].append(event.origins[0].latitude)
-                                data['Coord_z_event'].append(event.origins[0].depth)
-
-                                data['Network'].append(event.picks[i].waveform_id.network_code)
-                                data['Station'].append(event.picks[i].waveform_id.station_code)
-                                data['Phase'].append(event.picks[i].phase_hint)
-                                data['Time'].append(np.round(np.abs(time_origin - event.picks[i].time), 4))
-                                data['Event'].append(indx)
-                                data['Coord_x_event'].append(event.origins[0].longitude)
-                                data['Coord_y_event'].append(event.origins[0].latitude)
-                                data['Coord_z_event'].append(event.origins[0].depth)
-                                prev_station.append(event.picks[i].waveform_id.station_code)
-                                I.append(i)
-
-                            else:
-                                prev_station.append(event.picks[i].waveform_id.station_code)
-                                I.append(i)
-                    else:
-                        continue
-    return data
-
-
-def del_duplicates(data):
-    duplicates = data.duplicated(subset='Event')
-
-    data['Coord_x_event'] = data.apply(lambda row: row['Coord_x_event'] if not duplicates[row.name] else None, axis=1)
-    data['Coord_y_event'] = data.apply(lambda row: row['Coord_y_event'] if not duplicates[row.name] else None, axis=1)
-    data['Coord_z_event'] = data.apply(lambda row: row['Coord_z_event'] if not duplicates[row.name] else None, axis=1)
-
-    return data.replace(np.nan, '', regex=True)
-
-
-def generat_table(data):
-    df = change_station_on_number(data)
-
-    P_table = df[df['Phase'] == 'P'].reset_index(drop=True)
-    P_table = del_duplicates(P_table)
-    P_table['Phase'] = P_table['Phase'].replace('P', 1)
-
-    S_table = df[df['Phase'] == 'S'].reset_index(drop=True)
-    S_table = del_duplicates(S_table)
-    S_table['Phase'] = S_table['Phase'].replace('S', 2)
-
-    srcs = P_table.iloc[:, 5:].to_numpy()
-    srcs = np.asarray(srcs[~np.all(srcs == '', axis=1)], dtype=float)
-
-    return P_table, S_table, srcs
 
 
 def change_coords_to_ST3D(FI, TET, h, fi0, tet0):
@@ -209,3 +96,107 @@ def change_coords_to_ST3D(FI, TET, h, fi0, tet0):
     Z = Rz - (Y1 * np.cos(T) + Z1 * np.sin(T))
 
     return X, Y, Z
+
+
+def to_vtk(input_file_path, output_file_path, filepath, grid_size, X_Y_Z_rcvrs, X_Y_Z_srcs, Grid_Step, LIM_COORD):
+    h_5_file_in_ = []
+    h_5_file_out_ = []
+    f_in_ = h5py.File(input_file_path, 'r')
+    f_out_ = h5py.File(output_file_path, 'r')
+    VP_0 = f_in_['HPS_ST3D']['Input']['VGrid']['VS'][:, :, :]
+    VP_1 = f_out_['HPS_ST3D']['Iter_2']['VGrid']['VS'][:, :, :]
+    dVp = (VP_1 / VP_0 - 1) * 100
+
+    grid = pv.ImageData()
+    grid.dimensions = np.array(dVp.shape)
+    grid.origin = LIM_COORD
+    grid.spacing = np.array(
+        [
+            (Grid_Step[0]) / (grid_size[0] - 1),
+            (Grid_Step[1]) / (grid_size[1] - 1),
+            (Grid_Step[2]) / (grid_size[2] - 1)
+        ],
+        dtype=np.float64
+    )
+
+    grid.point_data['V'] = dVp.flatten(order="F")
+
+    # код для станций и сфер
+    radius_cone = 3  # радиус конуса
+    radius_spheres = 0.9
+    height_cone = 3  # Высота конусов
+    numb_face = 3  # Кол-во граней конуса
+    coefficient_z_geom = 1  # Коэффициент для z координаты расположения фигур
+    direction = (0, 0, -1)  # направление вершины конуса
+    cones = pv.MultiBlock([pv.Cone(center=X_Y_Z_rcvrs[k],
+                                   direction=direction,
+                                   radius=radius_cone,
+                                   height=height_cone,
+                                   resolution=numb_face) for k in range(len(X_Y_Z_rcvrs))])
+    spheres = pv.MultiBlock([pv.Sphere(radius=1 / radius_spheres,
+                                       center=X_Y_Z_srcs[i]) for i in range(len(X_Y_Z_srcs))])
+
+    # палетка
+
+    Down = np.array([116 / 255, 38 / 255, 38 / 255, 1])
+    color1 = np.array([129 / 255, 24 / 255, 24 / 255, 1])
+    color2 = np.array([159 / 255, 0, 0, 1])
+    color3 = np.array([208 / 255, 0, 0, 1])
+    color4 = np.array([1, 3 / 255, 0, 1])
+    color5 = np.array([1, 64 / 255, 0, 1])
+    color6 = np.array([1, 117 / 255, 0, 1])
+    color7 = np.array([1, 157 / 255, 0, 1])
+    color8 = np.array([1, 196 / 255, 0, 1])
+    color9 = np.array([1, 235 / 255, 158 / 255, 1])
+    color10 = np.array([232 / 255, 255 / 255, 255 / 255, 1])
+    color11 = np.array([222 / 252, 1, 1, 1])
+    color12 = np.array([156 / 255, 1, 1, 1])
+    color13 = np.array([60 / 255, 1, 1, 1])
+    color14 = np.array([25 / 255, 192 / 255, 1, 1])
+    color15 = np.array([89 / 258, 160 / 255, 1, 1])
+    color16 = np.array([119 / 255, 136 / 255, 238 / 255, 1])
+    color17 = np.array([141 / 255, 114 / 255, 216 / 255, 1])
+    color18 = np.array([141 / 255, 77 / 255, 204 / 255, 1])
+    Up = np.array([112 / 255, 19 / 255, 204 / 255, 1])
+
+    mapping = np.linspace(-10, 10, 255)
+
+    newcolors = np.empty((255, 4))
+    newcolors[mapping >= 9] = Up
+    newcolors[mapping < 9] = color18
+    newcolors[mapping < 8] = color17
+    newcolors[mapping < 7] = color16
+    newcolors[mapping < 6] = color15
+    newcolors[mapping < 5] = color14
+    newcolors[mapping < 4] = color13
+    newcolors[mapping < 3] = color12
+    newcolors[mapping < 2] = color11
+    newcolors[mapping < 1] = color10
+    newcolors[mapping < 0] = color9
+    newcolors[mapping < -1] = color8
+    newcolors[mapping < -2] = color7
+    newcolors[mapping < -3] = color6
+    newcolors[mapping < -4] = color5
+    newcolors[mapping < -5] = color4
+    newcolors[mapping < -6] = color3
+    newcolors[mapping < -7] = color2
+    newcolors[mapping < -8] = color1
+    newcolors[mapping < -9] = Down
+    my_colormap = ListedColormap(newcolors)
+
+    # отрисовка
+
+    # mesh = grid.slice_orthogonal(x = 5)
+    # mesh.plot(show_edges=True, notebook=False,lighting='three lights', show_bounds = True)
+    p = pv.Plotter(notebook=False, lighting='three lights')
+
+    p.add_mesh_slice(grid, assign_to_axis='x', cmap=my_colormap, clim=[-10, 10], interpolate_before_map=True)
+    p.add_mesh_slice(grid, assign_to_axis='y', cmap=my_colormap, clim=[-10, 10], interpolate_before_map=True)
+    p.add_mesh_slice(grid, assign_to_axis='z', cmap=my_colormap, clim=[-10, 10], interpolate_before_map=True)
+    # p.add_mesh(cones, color='blue')
+    # p.add_mesh(spheres, cmap='Reds')
+    p.show_bounds()
+
+    mesh = pv.PolyData()
+    obj = mesh.merge(grid)
+    obj.save(filepath)
