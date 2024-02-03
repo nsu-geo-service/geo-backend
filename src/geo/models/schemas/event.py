@@ -7,6 +7,7 @@ class Event(BaseModel):
     time: datetime
     magnitude: float
     network: str
+    event: str
     x: float
     y: float
     z: float

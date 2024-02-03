@@ -157,6 +157,7 @@ async def worker(
                 time=payload[0].datetime,
                 magnitude=payload[1],
                 network=payload[2],
+                event=event_name,
                 x=payload[3],
                 y=payload[4],
                 z=payload[5],

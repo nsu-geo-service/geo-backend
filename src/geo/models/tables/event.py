@@ -13,6 +13,7 @@ class Event(Base):
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     time = Column(DateTime(timezone=True), nullable=False)
     network = Column(VARCHAR(32), nullable=False)
+    event = Column(VARCHAR(32), nullable=False)
     magnitude = Column(DOUBLE(), nullable=False)
     x = Column(DOUBLE(), nullable=False)
     y = Column(DOUBLE(), nullable=False)
