@@ -70,10 +70,12 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
         station_repo = StationRepo(session)
         detection_repo = DetectionRepo(session)
         events = await event_repo.get_all(
-            task_id=task_id
+            task_id=task_id,
+            order_by="created_at"
         )
         stations = await station_repo.get_all(
-            task_id=task_id
+            task_id=task_id,
+            order_by="created_at"
         )
         detections = await detection_repo.get_all_by_task(
             task_id=task_id,
@@ -122,9 +124,9 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
     X_Y_Z_srcs = np.column_stack((x_event, y_event, z_event))
     X_Y_Z_rcvrs = np.column_stack((x_station, y_station, z_station))
 
-    input_file = NamedTemporaryFile(delete_on_close=False)
-    # logging.info(input_file.name)
-    with h5py.File("input_file.h5", "w") as file:
+    input_file_path = storage.abs_path(f"{task_id}/input.h5")
+    output_file_path = storage.abs_path(f"{task_id}/output.h5")
+    with h5py.File(input_file_path, "w") as file:
         hps_st3d_group = file.create_group("HPS_ST3D")
         group_input = hps_st3d_group.create_group("Input")
         group_input.attrs["IterMax"] = np.array([data.iter_max], dtype=np.int64)
@@ -203,13 +205,11 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
         # Датасеты "VP" и "VS"
         group_vgrid.create_dataset("VP", shape=Vp_st.shape, data=Vp_st, dtype='float64')
         group_vgrid.create_dataset("VS", shape=Vs_st.shape, data=Vs_st, dtype='float64')
-    await storage.save(f"{task_id}/input.h5", input_file.read(), "wb")
-    # os.remove(input_file.name)
 
     # Запуск процесса
     is_ok = await Worker(
         target=cpu_worker,
-        args=(executable, storage.abs_path(f"{task_id}/input.h5"), storage.abs_path(f"{task_id}/output.h5"))
+        args=(executable, input_file_path, output_file_path)
     )
     async with lazy_session() as session:
         task_repo = TaskRepo(session)
