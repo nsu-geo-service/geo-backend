@@ -21,7 +21,7 @@ class Tomography(BaseModel):
     mat_srcs_psv_corr_V: float
     v_limits_p: list[float]
     v_limits_s: list[float]
-    grid_size: list[float]
+    grid_size: list[int]
     grid_step: list[float]
     base_model: list[list[float]]
 
