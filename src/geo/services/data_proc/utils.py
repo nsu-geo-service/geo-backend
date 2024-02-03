@@ -91,7 +91,7 @@ def quake(filepath: str) -> tuple[
 
                             events[event_name] = (time_origin, magnitude, network, x, y, z)
 
-                            phase = Phase.P if event.picks[I[INDEX]].phase_hint else Phase.S
+                            phase = Phase.P if event.picks[I[INDEX]].phase_hint == "P" else Phase.S
                             time = np.round(np.abs(time_origin - event.picks[I[INDEX]].time), 4)
 
                             if event_name not in detections:
