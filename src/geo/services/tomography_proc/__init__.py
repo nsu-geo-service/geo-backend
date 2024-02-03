@@ -1,3 +1,4 @@
+import datetime
 import logging
 import subprocess
 
@@ -13,7 +14,7 @@ from geo.repositories.event import EventRepo
 from geo.repositories.station import StationRepo
 from geo.repositories.tomography import TomographyRepo
 from geo.services.storage import FileStorage
-from geo.services.tomography_proc.utils import change_coords_to_ST3D, relief_read, create_start_model
+from geo.services.tomography_proc.utils import change_coords_to_ST3D, relief_read, create_start_model, to_vtk
 from geo.utils.queue import Queue
 
 
@@ -45,11 +46,21 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
         task = await task_repo.get(id=task_id)
         if not task:
             logging.error(f"[TomographyProc] Задача с id {task_id!r} не существует")
+            await task_repo.update(
+                id=task_id,
+                state=TaskState.FAILED,
+                completed_in=datetime.datetime.now(datetime.UTC)
+            )
             return
 
         data = await tomography_repo.get(task_id=task_id)
         if not data:
             logging.error(f"[TomographyProc] Данные задачи с task_id {task_id!r} не существуют")
+            await task_repo.update(
+                id=task_id,
+                state=TaskState.FAILED,
+                completed_in=datetime.datetime.now(datetime.UTC)
+            )
             return
 
     relief_path = storage.abs_path("relief.dat")
@@ -204,17 +215,33 @@ async def worker(queue: Queue, lazy_session: async_sessionmaker[AsyncSession], s
         target=cpu_worker,
         args=(executable, input_file_path, output_file_path)
     )
+    if not is_ok:
+        async with lazy_session() as session:
+            task_repo = TaskRepo(session)
+            await task_repo.update(
+                id=task_id,
+                state=TaskState.FAILED,
+                completed_in=datetime.datetime.now(datetime.UTC)
+            )
+
+    vtk_file_model = await storage.save(f"{task_id}/model.vtk", "", "w")
+    to_vtk(
+        input_file_path,
+        output_file_path,
+        vtk_file_model,
+        data.grid_size,
+        X_Y_Z_rcvrs,
+        X_Y_Z_srcs,
+        data.grid_step,
+        LIM_COORD
+    )
+
     async with lazy_session() as session:
         task_repo = TaskRepo(session)
 
-        if is_ok:
-            await task_repo.update(
-                id=task_id,
-                state=TaskState.DONE,
-                step=TaskStep.TOMOGRAPHY
-            )
-        else:
-            await task_repo.update(
-                id=task_id,
-                state=TaskState.FAILED
-            )
+        await task_repo.update(
+            id=task_id,
+            state=TaskState.DONE,
+            step=TaskStep.TOMOGRAPHY,
+            completed_in=datetime.datetime.now(datetime.UTC)
+        )
