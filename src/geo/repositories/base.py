@@ -40,7 +40,7 @@ class BaseRepository(Generic[T]):
             self,
             limit: int = None,
             offset: int = None,
-            order_by: str = "id",
+            order_by: str = None,
             **kwargs
     ) -> list[Optional[T]]:
         """
@@ -55,13 +55,14 @@ class BaseRepository(Generic[T]):
         stmt = (
             select(self.table)
             .filter_by(**kwargs)
-            .order_by(text(order_by))
         )
 
         if limit:
             stmt = stmt.limit(limit)
         if offset:
             stmt = stmt.offset(offset)
+        if order_by:
+            stmt = stmt.order_by(text(order_by))
 
         result = await self._session.execute(stmt)
         return result.scalars().all()

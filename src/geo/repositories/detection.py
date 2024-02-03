@@ -15,7 +15,7 @@ class DetectionRepo(BaseRepository[tables.Detection]):
             task_id: UUID,
             limit: int = None,
             offset: int = None,
-            order_by: str = "id",
+            order_by: str = None,
             **kwargs
     ) -> list[tables.Detection]:
         """
@@ -35,12 +35,13 @@ class DetectionRepo(BaseRepository[tables.Detection]):
                 subqueryload(self.table.station),
             )
             .where(self.table.event.has(task_id=task_id))
-            .order_by(text(order_by))
         )
         if limit:
             stmt = stmt.limit(limit)
         if offset:
             stmt = stmt.offset(offset)
+        if order_by:
+            stmt = stmt.order_by(text(order_by))
 
         result = await self._session.execute(stmt)
         return result.scalars().all()
