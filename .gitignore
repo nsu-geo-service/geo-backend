@@ -109,3 +109,4 @@ venv.bak/
 
 # pytype static type analyzer
 .pytype/
+database
