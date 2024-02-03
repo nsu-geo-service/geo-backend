@@ -11,6 +11,7 @@ from geo.repositories.event import EventRepo
 from geo.repositories.seisdata import SeisDataRepo
 from geo.repositories.station import StationRepo
 from geo.repositories.tomography import TomographyRepo
+from geo.services.storage import FileStorage
 from geo.utils.queue import Queue
 
 
@@ -21,10 +22,12 @@ class GeoApplicationService:
             data_queue: Queue,
             tomography_queue: Queue,
             lazy_session: async_sessionmaker[AsyncSession],
+            storage: FileStorage
     ):
         self._seisdata_queue = data_queue
         self._tomography_queue = tomography_queue
         self._lazy_session = lazy_session
+        self._storage = storage
 
     async def seisdata(self, task_id: TaskID) -> SeisData:
         async with self._lazy_session() as session:
@@ -89,3 +92,42 @@ class GeoApplicationService:
                 task_id=task_id
             )
         return [Station.model_validate(station) for station in stations]
+
+    async def tomography_vtk_3d(self, task_id: TaskID):
+        async with self._lazy_session() as session:
+            tomography_repo = TomographyRepo(session)
+            task_repo = TaskRepo(session)
+            tomography = await tomography_repo.get(task_id=task_id)
+            task = await task_repo.get(id=task_id)
+
+        if not tomography:
+            raise NotFound(f"Данные задачи с task_id {task_id!r} не существуют")
+        if task.state != TaskState.DONE:
+            raise BadRequest(f"Задача с id {task_id!r} не завершена")
+        return self._storage.load_gen(f"{task_id}/model.vtk", "rb")
+
+    async def tomography_in_h5(self, task_id: TaskID):
+        async with self._lazy_session() as session:
+            tomography_repo = TomographyRepo(session)
+            task_repo = TaskRepo(session)
+            tomography = await tomography_repo.get(task_id=task_id)
+            task = await task_repo.get(id=task_id)
+
+        if not tomography:
+            raise NotFound(f"Данные задачи с task_id {task_id!r} не существуют")
+        if task.state != TaskState.DONE:
+            raise BadRequest(f"Задача с id {task_id!r} не завершена")
+        return self._storage.load_gen(f"{task_id}/input.h5", "rb")
+
+    async def tomography_out_h5(self, task_id: TaskID):
+        async with self._lazy_session() as session:
+            tomography_repo = TomographyRepo(session)
+            task_repo = TaskRepo(session)
+            tomography = await tomography_repo.get(task_id=task_id)
+            task = await task_repo.get(id=task_id)
+
+        if not tomography:
+            raise NotFound(f"Данные задачи с task_id {task_id!r} не существуют")
+        if task.state != TaskState.DONE:
+            raise BadRequest(f"Задача с id {task_id!r} не завершена")
+        return self._storage.load_gen(f"{task_id}/output.h5", "rb")
