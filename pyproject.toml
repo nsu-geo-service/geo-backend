@@ -21,7 +21,9 @@ APScheduler = "^3.10.4"
 httpx = "^0.26.0"
 aiomultiprocess = "^0.9.0"
 h5py = "^3.10.0"
-
+pyvista = "^0.43.2"
+trame = "^3.5.2"
+trame-vtk = "^2.8.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.8"]
