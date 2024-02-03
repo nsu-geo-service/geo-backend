@@ -12,4 +12,5 @@ async def get_services(request: Request) -> ServiceFactory:
         tomography_queue=global_scope.tomography_queue,
         lazy_session=global_scope.db_session,
         config=global_scope.config,
+        storage=global_scope.storage
     )
