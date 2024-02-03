@@ -30,7 +30,10 @@ class DetectionRepo(BaseRepository[tables.Detection]):
         """
         stmt = (
             select(self.table)
-            .options(subqueryload(self.table.event))
+            .options(
+                subqueryload(self.table.event),
+                subqueryload(self.table.station),
+            )
             .where(self.table.event.has(task_id=task_id))
             .order_by(text(order_by))
         )
