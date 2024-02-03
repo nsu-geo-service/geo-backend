@@ -31,8 +31,9 @@ class ApplicationFactory:
             title="GeoService",
             debug=config.DEBUG,
             swagger_ui_parameters={"syntaxHighlight.theme": "obsidian"},
-            docs_url="/api/v1/docs",
-            redoc_url="/api/v1/redoc",
+            root_path="/api" if not config.DEBUG else "",
+            docs_url="/api/docs" if config.DEBUG else "/docs",
+            redoc_url="/api/redoc" if config.DEBUG else "/redoc",
         )
         app.openapi = lambda: custom_openapi(app)
         getattr(app, "state").config = config
