@@ -26,11 +26,12 @@ class FileStorage:
         os.makedirs(self.path, exist_ok=True)
         self.chunk_size = chunk_size
 
-    async def save(self, filepath: os.PathLike | str, data: bytes | str, mode: FILE_MODE) -> None:
+    async def save(self, filepath: os.PathLike | str, data: bytes | str, mode: FILE_MODE) -> os.PathLike:
         path = os.path.join(self.path, filepath)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         async with aiofiles.open(path, mode) as f:
             await f.write(data)
+        return path
 
     async def load(self, filepath: os.PathLike | str, mode: FILE_MODE) -> bytes | str:
         async with aiofiles.open(os.path.join(self.path, filepath), mode) as f:

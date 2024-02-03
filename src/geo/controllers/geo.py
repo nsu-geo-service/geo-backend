@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from fastapi import status as http_status
+from starlette.responses import StreamingResponse
 
 from geo.models.schemas import TaskID
 from geo.services import ServiceFactory
@@ -57,13 +58,52 @@ async def station_table(
     return StationsResponse(content=await services.geo.stations(task_id))
 
 
-@geo_router.get("/{task_id}/tomography/3d", status_code=http_status.HTTP_200_OK)
-async def tomography_3d(
+@geo_router.get("/{task_id}/tomography/vtk3D", status_code=http_status.HTTP_200_OK)
+async def tomography_vtk_3d(
         task_id: TaskID,
         services: ServiceFactory = Depends(get_services)
 ):
     """
-    3D модель томографии
+    3D vtk модель томографии
 
     """
-    ...
+    file_iter = await services.geo.tomography_vtk_3d(task_id)
+    return StreamingResponse(
+        file_iter,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f"attachment; filename={task_id}.vtk"}
+    )
+
+
+@geo_router.get("/{task_id}/tomography/inH5", status_code=http_status.HTTP_200_OK)
+async def tomography_in_h5(
+        task_id: TaskID,
+        services: ServiceFactory = Depends(get_services)
+):
+    """
+    H5 входной файл модель томографии
+
+    """
+    file_iter = await services.geo.tomography_in_h5(task_id)
+    return StreamingResponse(
+        file_iter,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f"attachment; filename={task_id}_in.h5"}
+    )
+
+
+@geo_router.get("/{task_id}/tomography/outH5", status_code=http_status.HTTP_200_OK)
+async def tomography_out_h5(
+        task_id: TaskID,
+        services: ServiceFactory = Depends(get_services)
+):
+    """
+    H5 выходной файл модель томографии
+
+    """
+    file_iter = await services.geo.tomography_out_h5(task_id)
+    return StreamingResponse(
+        file_iter,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f"attachment; filename={task_id}_out.h5"}
+    )
